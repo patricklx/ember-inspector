@@ -21,7 +21,7 @@ export default Component.extend({
      * @property sortProperties
      * @type {Array<String>}
      */
-    this.sortProperties = ['name'];
+    this.sortProperties = ['value.type', 'name'];
   },
 });
 

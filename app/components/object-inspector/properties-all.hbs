@@ -2,7 +2,7 @@
   <ObjectInspector::SortProperties
     @properties={{this.flatPropertyList}} as |sortedProperties|
   >
-    {{#each sortedProperties as |prop|}}
+    {{#each sortedProperties key="name" as |prop|}}
       <ObjectInspector::Property
         @model={{prop}}
         @calculate={{fn this.calculate prop}}

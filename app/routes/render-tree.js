@@ -38,6 +38,9 @@ export default TabRoute.extend({
     const profiles = message.profiles;
 
     model.pushObjects(profiles);
+    if (model.length > 100) {
+      this.set('controller.model', model.slice(-100));
+    }
   },
 
   actions: {

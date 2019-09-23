@@ -19,29 +19,11 @@
   {{/if}}
 
   {{!-- Property Icon --}}
-  {{#if this.isService}}
-    <span
-      class="mixin__property-icon-container"
-      title="Service"
-    >
-      <span class="mixin__property-icon mixin__property-icon--service"></span>
-    </span>
-  {{else if this.isComputedProperty}}
-    <span
-      class="mixin__property-icon-container"
-      title={{if @model.code @model.code "code not avaliable"}}
-      {{on "click" this.toggleDeps}}
-    >
-      <span class="mixin__property-icon mixin__property-icon--computed"></span>
-    </span>
-  {{else}}
-    <span
-      class="mixin__property-icon-container"
-      title="Property"
-    >
-      <span class="mixin__property-icon mixin__property-icon--property"></span>
-    </span>
-  {{/if}}
+  <span class="mixin__property-icon-container" title="{{if @model.code @model.code this.icon.title}}"
+    {{on "click" this.toggleDeps}}
+  >
+      <span class="mixin__property-icon mixin__property-icon--{{this.icon.type}}"></span>
+  </span>
 
   {{!-- Property Name --}}
   <span class="mixin__property-name js-object-property-name">

@@ -12,9 +12,7 @@ export default Component.extend({
   txtValue: null,
   dateValue: null,
 
-  isCalculated: computed('valueType', function () {
-    return this.valueType !== 'type-descriptor';
-  }),
+  isCalculated: alias('model.value.isCalculated'),
 
   valueType: alias('model.value.type'),
 
@@ -30,7 +28,7 @@ export default Component.extend({
 
   isInstance: equal('valueType', 'type-instance'),
 
-  isComputedProperty: alias('model.value.computed'),
+  isComputedProperty: alias('model.isComputed'),
 
   isFunction: equal('valueType', 'type-function'),
 
@@ -46,6 +44,34 @@ export default Component.extend({
 
   showDependentKeys: and('isDepsExpanded', 'hasDependentKeys'),
 
+  icon: computed('isService', 'model.inspect.value', 'model.isTracked', 'model.isProperty', 'model.isGetter', 'isFunction', function () {
+    if (this.get('isService')) {
+      return { type: 'service', title: 'Service' };
+    }
+
+    if (this.get('isFunction')) {
+      return { type: 'function', title: 'Function' };
+    }
+
+    if (this.get('model.isTracked')) {
+      return { type: 'tracked', title: 'Tracked' };
+    }
+
+    if (this.get('model.isProperty')) {
+      return { type: 'property', title: 'Property' };
+    }
+
+    if (this.get('model.isComputed')) {
+      return { type: 'computed', title: 'Computed' };
+    }
+
+    if (this.get('model.isGetter')) {
+      return { type: 'getter', title: 'Getter' };
+    }
+
+    return { type: 'n/a', title: 'N/A' };
+  }),
+
   canDig() {
     return this.isInstance
       || this.isObject
@@ -58,6 +84,7 @@ export default Component.extend({
   },
 
   toggleDeps: action(function () {
+    if (!this.hasDependentKeys) return;
     this.toggleProperty('isDepsExpanded');
   }),
 

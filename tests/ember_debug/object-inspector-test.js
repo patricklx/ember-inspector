@@ -219,7 +219,7 @@ module('Ember Debug - Object Inspector', function(hooks) {
     let computedProperty = message.details[1].properties[0];
 
     assert.equal(computedProperty.name, 'hi');
-    assert.ok(computedProperty.value.computed);
+    assert.ok(computedProperty.isComputed);
     assert.equal(computedProperty.value.type, 'type-descriptor');
     assert.equal(computedProperty.value.inspect, '<computed>');
 
@@ -238,7 +238,7 @@ module('Ember Debug - Object Inspector', function(hooks) {
     assert.equal(message.mixinIndex, 1);
     assert.equal(message.value.type, 'type-string');
     assert.equal(message.value.inspect, inspect('Hello'));
-    assert.ok(message.value.computed);
+    assert.ok(message.value.isCalculated);
 
     assert.verifySteps([
       'inspector: sendObject',
@@ -262,12 +262,12 @@ module('Ember Debug - Object Inspector', function(hooks) {
     let computedProperty = message.details[1].properties[0];
 
     assert.equal(computedProperty.name, 'hi');
-    assert.ok(computedProperty.value.computed);
+    assert.ok(computedProperty.value.isCalculated);
     assert.equal(computedProperty.value.type, 'type-string');
     assert.equal(computedProperty.value.inspect, inspect('Hello'));
   });
 
-  test('Properties are correctly bound', function(assert) {
+  test('Properties are correctly bound', async function(assert) {
     let inspected = EmberObject.extend({
       name: 'Teddy',
 
@@ -296,12 +296,14 @@ module('Ember Debug - Object Inspector', function(hooks) {
 
     inspected.set('name', 'Alex');
 
+    await new Promise(res => setTimeout(res, 300));
+
     assert.equal(name, 'objectInspector:updateProperty');
 
     assert.equal(message.objectId, id);
     assert.equal(message.property, 'name');
     assert.equal(message.mixinIndex, 1);
-    assert.equal(message.value.computed, false);
+    assert.equal(message.value.isCalculated, true);
     assert.equal(message.value.inspect, inspect('Alex'));
     assert.equal(message.value.type, 'type-string');
 
@@ -311,7 +313,16 @@ module('Ember Debug - Object Inspector', function(hooks) {
 
     inspected.set('hi', 'Hey');
 
-    assert.equal(message, null, 'Computed properties are not bound as long as they haven\'t been calculated');
+    await new Promise(res => setTimeout(res, 300));
+
+    assert.equal(message.objectId, id);
+    assert.equal(message.property, 'hi');
+    assert.equal(message.mixinIndex, 1);
+    assert.ok(message.value.isCalculated);
+    assert.equal(message.value.inspect, inspect('Hey'));
+    assert.equal(message.value.type, 'type-string');
+
+    message = null;
 
     port.trigger('objectInspector:calculate', {
       objectId: id,
@@ -319,18 +330,19 @@ module('Ember Debug - Object Inspector', function(hooks) {
       mixinIndex: 1
     });
 
-    message = null;
     inspected.set('hi', 'Hello!');
+
+    await new Promise(res => setTimeout(res, 500));
 
     assert.equal(message.objectId, id);
     assert.equal(message.property, 'hi');
     assert.equal(message.mixinIndex, 1);
-    assert.ok(message.value.computed);
+    assert.ok(message.value.isCalculated);
     assert.equal(message.value.inspect, inspect('Hello!'));
     assert.equal(message.value.type, 'type-string');
   });
 
-  test('Properties can be updated through a port message', function(assert) {
+  test('Properties can be updated through a port message', async function(assert) {
     let inspected = EmberObject.extend({
       name: 'Teddy'
     }).create();
@@ -347,6 +359,8 @@ module('Ember Debug - Object Inspector', function(hooks) {
     });
 
     assert.equal(inspected.get('name'), 'Alex');
+
+    await new Promise(res => setTimeout(res, 300));
 
     // A property updated message is published
     assert.equal(name, 'objectInspector:updateProperty');

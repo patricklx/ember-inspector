@@ -22,7 +22,7 @@ const {
   Controller,
   A
 } = Ember;
-const { later } = run;
+const { throttle} = run;
 const { readOnly } = computed;
 
 const keys = Object.keys || Ember.keys;
@@ -262,18 +262,20 @@ export default EmberObject.extend(PortMixin, {
     this.sendMessage('stopInspecting', {});
   },
 
+  send() {
+    if (this.isDestroying) {
+      return;
+    }
+    this.releaseCurrentObjects();
+    let tree = this.viewTree();
+    if (tree) {
+      this.sendMessage('viewTree', { tree });
+    }
+  },
+
   scheduledSendTree() {
     // Send out of band
-    later(() => {
-      if (this.isDestroying) {
-        return;
-      }
-      this.releaseCurrentObjects();
-      let tree = this.viewTree();
-      if (tree) {
-        this.sendMessage('viewTree', { tree });
-      }
-    }, 50);
+    throttle(this, this.send, 1000, false);
   },
 
   viewTree() {

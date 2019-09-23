@@ -1,8 +1,16 @@
 import Component from '@ember/component';
-import { action } from '@ember/object';
+import { action, computed } from '@ember/object';
+import { guidFor } from '@ember/object/internals';
 
 export default Component.extend({
   tagName: '',
+
+  mixins: computed('model.mixins.[]', function () {
+    return this.get('model.mixins').map((m) => {
+      m._key = guidFor(m);
+      return m;
+    });
+  }),
 
   sendToConsole: action(function ({ name }) {
     this.port.send('objectInspector:sendToConsole', {

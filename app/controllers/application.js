@@ -78,6 +78,9 @@ export default Controller.extend({
    * Called when inspecting an object from outside of the ObjectInspector
   */
   activateMixinDetails(name, objectId, details, errors) {
+    if (this.mixinStack.objectAt(0) && this.mixinStack.objectAt(0).objectId === objectId) {
+      return;
+    }
     this.mixinStack.forEach(item => {
       this.port.send('objectInspector:releaseObject', { objectId: item.objectId });
     });
