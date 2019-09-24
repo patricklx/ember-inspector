@@ -39,7 +39,7 @@ export default TabRoute.extend({
 
     model.pushObjects(profiles);
     if (model.length > 100) {
-      this.set('controller.model', model.slice(-100));
+      this.set('controller.model', model.slice(0, 100));
     }
   },
 

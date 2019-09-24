@@ -275,7 +275,7 @@ export default EmberObject.extend(PortMixin, {
 
   scheduledSendTree() {
     // Send out of band
-    throttle(this, this.send, 1000, false);
+    throttle(this, this.send, 500, false);
   },
 
   viewTree() {

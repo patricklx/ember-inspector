@@ -44,6 +44,14 @@ export default Component.extend({
 
   showDependentKeys: and('isDepsExpanded', 'hasDependentKeys'),
 
+  canCalculate: computed('model', 'isCalculated', 'isComputedProperty', function () {
+    if (this.get('isOverridden')) return false;
+    if (this.get('model.isGetter') && this.get('model.isExpensive')) {
+      return true;
+    }
+    return this.get('isComputedProperty') && !this.get('isCalculated');
+  }),
+
   icon: computed('isService', 'model.inspect.value', 'model.isTracked', 'model.isProperty', 'model.isGetter', 'isFunction', function () {
     if (this.get('isService')) {
       return { type: 'service', title: 'Service' };

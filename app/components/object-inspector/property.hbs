@@ -19,10 +19,10 @@
   {{/if}}
 
   {{!-- Property Icon --}}
-  <span class="mixin__property-icon-container" title="{{if @model.code @model.code this.icon.title}}"
+  <span class="mixin__property-icon-container" title={{if @model.code @model.code this.icon.title}}
     {{on "click" this.toggleDeps}}
   >
-      <span class="mixin__property-icon mixin__property-icon--{{this.icon.type}}"></span>
+    <span class="mixin__property-icon mixin__property-icon--{{this.icon.type}}"></span>
   </span>
 
   {{!-- Property Name --}}
@@ -70,7 +70,7 @@
       />
     {{/if}}
   {{else}}
-    {{#if (and this.isComputedProperty (not this.isCalculated))}}
+    {{#if this.canCalculate}}
       <button
         class="mixin__calc-btn js-calculate"
         title="compute property"
@@ -78,7 +78,8 @@
       >
         {{svg-jar "calculate" width="16px" height="16px"}}
       </button>
-    {{else if this.isDate}}
+    {{/if}}
+    {{#if this.isDate}}
       <span
         class="{{this.valueType}} mixin__property-value js-object-property-value"
         {{on "click" this.dateClick}}
