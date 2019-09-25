@@ -46,7 +46,7 @@ export default Component.extend({
 
   canCalculate: computed('model', 'isCalculated', 'isComputedProperty', function () {
     if (this.get('isOverridden')) return false;
-    if (this.get('model.isGetter') && this.get('model.isExpensive')) {
+    if (!this.get('isComputedProperty') && this.get('model.isGetter') && this.get('model.isExpensive')) {
       return true;
     }
     return this.get('isComputedProperty') && !this.get('isCalculated');

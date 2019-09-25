@@ -500,13 +500,16 @@ export default EmberObject.extend(PortMixin, {
     // find first ember extended object to show mixins afterwards
     let index = objectMixins.findIndex(o => o.isEmberExtended);
     if (index < 0) index = objectMixins.length;
-    if (index === 0 || index === 1 && mixins.length && mixins[0].mixins) {
+    if (index <= 1) {
       index = 1;
       // remove properties that are in mixins, but not itself
-      mixins[0].mixins.slice(0, -1).forEach((m) => {
-        const props = Object.keys((m.mixins && m.mixins[0] && m.mixins[0].properties) || {});
-        objectMixins[0].properties = objectMixins[0].properties.filter(o => !props.includes(o.name));
-      });
+      if (mixins[0].mixins) {
+        mixins[0].mixins.slice(0, -1).forEach((m) => {
+          const props = Object.keys((m.mixins && m.mixins[0] && m.mixins[0].properties) || {});
+          objectMixins[0].properties = objectMixins[0].properties.filter(o => !props.includes(o.name));
+        });
+      }
+
       // the base mixins appear again later in the mixins...
       mixins.splice(0, 1);
     }
