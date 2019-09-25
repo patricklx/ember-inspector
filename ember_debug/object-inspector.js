@@ -206,6 +206,8 @@ export default EmberObject.extend(PortMixin, {
 
   sentObjects: {},
 
+  parentObjects: {},
+
   objectPropertyValues: {},
 
   trackedTags: {},
@@ -343,7 +345,9 @@ export default EmberObject.extend(PortMixin, {
     let object = get(parentObject, property);
 
     if (this.canSend(object)) {
+      const currentObject = this.currentObject;
       let details = this.mixinsForObject(object);
+      this.parentObjects[details.objectId] = currentObject;
       this.sendMessage('updateObject', {
         parentObject: objectId,
         property,
@@ -411,6 +415,10 @@ export default EmberObject.extend(PortMixin, {
 
   dropObject(objectId) {
     let object = this.sentObjects[objectId];
+    if (this.parentObjects[objectId]) {
+      this.currentObject = this.parentObjects[objectId];
+    }
+    delete this.parentObjects[objectId];
 
     if (object && object.reopen) {
       object.reopen({ willDestroy: object._oldWillDestroy });
