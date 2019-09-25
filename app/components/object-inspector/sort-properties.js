@@ -11,10 +11,24 @@ export default Component.extend({
    * @property sortedProperties
    * @type {Array<Object>}
    */
-  sortedProperties: sort('props', 'sortProperties'),
+  sortedProperties: computed('props.length', function () {
+    if (this.get('sorted.length') > 100) {
+      const props = this.get('sorted').slice(0, 100);
+      props.push({ name: '...', value: {
+        inspect: 'there are more properties, send to console to see all'
+      });
+      return props; 
+    }
+    return props;
+  }),
+
+  sorted: sort('sorted', 'sortProperties'),
 
   props: map('properties', function (p) {
     set(p, 'isFunction', p.value.type === 'type-function');
+    if (p.name == parseInt(p.name)) {
+      p.name = parseInt(p.name);
+    }
     return p;
   }),
 
