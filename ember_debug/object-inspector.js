@@ -511,7 +511,7 @@ export default EmberObject.extend(PortMixin, {
     if (index <= 1) {
       index = 1;
       // remove properties that are in mixins, but not itself
-      if (mixins[0].mixins) {
+      if (mixins[0] && mixins[0].mixins) {
         mixins[0].mixins.slice(0, -1).forEach((m) => {
           const props = Object.keys((m.mixins && m.mixins[0] && m.mixins[0].properties) || {});
           objectMixins[0].properties = objectMixins[0].properties.filter(o => !props.includes(o.name));
