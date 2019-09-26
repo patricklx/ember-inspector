@@ -451,11 +451,8 @@ export default EmberObject.extend(PortMixin, {
       if (proto.hasOwnProperty('toString') && !proto.hasOwnProperty('hasOwnProperty')) {
         return proto.toString();
       }
-      if (name === 'Class') {
+      if (name === 'Class' || name.startsWith('_')) {
         name = object.toString();
-      }
-      if (name.includes(':ember')) {
-        name = name.split(':')[0].slice(1);
       }
       return name;
     };
