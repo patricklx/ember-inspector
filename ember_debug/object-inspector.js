@@ -619,7 +619,7 @@ export default EmberObject.extend(PortMixin, {
       dependentKeys.push(...this.getTagTrackedProps(metal.tagForProperty(object, property)));
     }
 
-    return [...new Set([...dependentKeys, ...this.getTrackedDependencies(proto, property)])];
+    return [...new Set([...dependentKeys])];
   },
 
   inspect,
