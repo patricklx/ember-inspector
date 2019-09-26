@@ -13,6 +13,12 @@ export default Component.extend({
   }),
 
   sendToConsole: action(function ({ name }) {
+    if (name === '...') {
+      this.port.send('objectInspector:sendToConsole', {
+        objectId: this.model.objectId
+      });
+      return;
+    }
     this.port.send('objectInspector:sendToConsole', {
       objectId: this.model.objectId,
       property: name

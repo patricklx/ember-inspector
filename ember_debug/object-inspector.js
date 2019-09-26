@@ -136,7 +136,7 @@ export default EmberObject.extend(PortMixin, {
   updateCurrentObject() {
     if (this.currentObject) {
       const {object, mixinDetails, objectId} = this.currentObject;
-      const errorsForObject = this.get('_errorsFor')[objectId];
+      const errorsForObject = this.get('_errorsFor')[objectId] = {};
       mixinDetails.forEach((mixin, mixinIndex) => {
         mixin.properties.forEach(item => {
           if (item.overridden) {
@@ -684,22 +684,26 @@ function addProperties(properties, hash) {
         options.isService = desc._getter && desc._getter.name === 'getInjection';
       }
     }
+    if (options.isService) {
+      replaceProperty(properties, prop, inspectValue(hash, prop), options);
+      continue;
+    }
 
     if (isComputed(hash, prop)) {
       options.isComputed = true;
       options.dependentKeys = (desc._dependentKeys || []).map((key) => key.toString());
-      if (!options.isService) {
-        if (typeof desc.get === 'function') {
-          options.code = Function.prototype.toString.call(desc.get);
-        }
-        if (typeof desc._getter === 'function') {
-          options.isCalculated = true;
-          options.code = Function.prototype.toString.call(desc._getter);
-        }
-        if (!options.code) {
-          options.code = '';
-        }
+
+      if (typeof desc.get === 'function') {
+        options.code = Function.prototype.toString.call(desc.get);
       }
+      if (typeof desc._getter === 'function') {
+        options.isCalculated = true;
+        options.code = Function.prototype.toString.call(desc._getter);
+      }
+      if (!options.code) {
+        options.code = '';
+      }
+
       options.readOnly = desc._readOnly;
       options.auto = desc._auto;
       options.canTrack = options.code !== '';
@@ -713,7 +717,7 @@ function addProperties(properties, hash) {
       options.isGetter = true;
     }
     if (desc.hasOwnProperty('value') || options.isMandatorySetter) {
-      options.isGetter = false;
+      delete options.isGetter;
       options.isProperty = true;
       options.canTrack = false;
     }

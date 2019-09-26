@@ -88,6 +88,7 @@ export default Component.extend({
   },
 
   cannotEdit() {
+    if (this.model.name === '...') return true;
     return this.isFunction || this.isOverridden || this.readOnly;
   },
 
