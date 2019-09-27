@@ -390,7 +390,7 @@ module('Object Inspector', function(hooks) {
       value: {
         inspect: 'Alex',
         type: 'type-string',
-        isCalculated: false
+        isCalculated: true
       }
     });
 
@@ -433,7 +433,7 @@ module('Object Inspector', function(hooks) {
           value: {
             inspect: '{"name":"teddy"}',
             type: 'type-string',
-            isCalculated: false
+            isCalculated: true
           }
         }]
 
@@ -467,7 +467,7 @@ module('Object Inspector', function(hooks) {
           value: {
             inspect: 'Teddy',
             type: 'type-string',
-            isCalculated: false
+            isCalculated: true
           }
         }]
 

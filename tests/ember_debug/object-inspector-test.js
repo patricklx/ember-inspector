@@ -89,29 +89,33 @@ module('Ember Debug - Object Inspector', function(hooks) {
     let firstDetail = message.details[0];
     assert.equal(firstDetail.name, 'Own Properties');
 
-    assert.equal(firstDetail.properties.length, 4, 'methods are included');
+    assert.equal(firstDetail.properties.length, 5, 'methods are included');
 
     let idProperty = firstDetail.properties[0];
     assert.equal(idProperty.name, 'id');
     assert.equal(idProperty.value.type, 'type-number');
     assert.equal(idProperty.value.inspect, '1');
 
-    let nullProperty = firstDetail.properties[1];
+    let toStringProperty = firstDetail.properties[1];
+    assert.equal(toStringProperty.name, 'toString');
+    assert.equal(toStringProperty.value.type, 'type-function');
+
+    let nullProperty = firstDetail.properties[2];
     assert.equal(nullProperty.name, 'nullVal');
     assert.equal(nullProperty.value.type, 'type-null');
     assert.equal(nullProperty.value.inspect, 'null');
 
-    let prop = firstDetail.properties[2];
+    let prop = firstDetail.properties[3];
     assert.equal(prop.name, 'dateVal');
     assert.equal(prop.value.type, 'type-date');
     assert.equal(prop.value.inspect, date.toString());
 
-    let nameProperty = firstDetail.properties[3];
+    let nameProperty = firstDetail.properties[4];
     assert.equal(nameProperty.name, 'name');
     assert.equal(nameProperty.value.inspect, inspect('My Object'));
 
     let secondDetail = message.details[1];
-    assert.equal(secondDetail, undefined);
+    assert.equal(secondDetail.name, '(unknown)');
   });
 
   test('An ES6 Class is correctly transformed into an inspection hash', function(assert) {
@@ -163,7 +167,7 @@ module('Ember Debug - Object Inspector', function(hooks) {
     let firstDetail = message.details[0];
     assert.equal(firstDetail.name, 'Own Properties');
 
-    assert.equal(firstDetail.properties.length, 6, 'methods are included');
+    assert.equal(firstDetail.properties.length, 7, 'methods are included');
 
 
     let idProperty = firstDetail.properties[0];
@@ -177,22 +181,28 @@ module('Ember Debug - Object Inspector', function(hooks) {
     assert.equal(nullProperty.value.inspect, '"My Object"');
 
     let prop = firstDetail.properties[2];
+
+    assert.equal(prop.name, 'toString');
+    assert.equal(prop.value.type, 'type-function');
+
+    prop = firstDetail.properties[3];
     assert.equal(prop.name, 'nullVal');
     assert.equal(prop.value.type, 'type-null');
     assert.equal(prop.value.inspect, 'null');
 
-    prop = firstDetail.properties[3];
+    prop = firstDetail.properties[4];
     assert.equal(prop.name, 'dateVal');
     assert.equal(prop.value.type, 'type-date');
     assert.equal(prop.value.inspect, date.toString());
 
-    prop = firstDetail.properties[4];
-    assert.equal(prop.name, 'get');
-    assert.equal(prop.value.type, 'type-function');
-
     prop = firstDetail.properties[5];
     assert.equal(prop.name, 'aCP');
     assert.equal(prop.value.type, 'type-boolean');
+
+    prop = firstDetail.properties[6];
+    assert.equal(prop.name, 'get');
+    assert.equal(prop.value.type, 'type-function');
+
   });
 
   test('Computed properties are correctly calculated', function(assert) {
@@ -447,10 +457,10 @@ module('Ember Debug - Object Inspector', function(hooks) {
 
     assert.equal(message.details[2].name, 'Own Properties');
     assert.equal(message.details[2].properties.length, 2, 'Correctly merges properties');
-    assert.equal(message.details[2].properties[0].name, 'hasChildren');
-    assert.equal(message.details[2].properties[1].value.isCalculated, undefined, 'Does not calculate expensive properties');
+    assert.equal(message.details[2].properties[0].value.isCalculated, undefined, 'Does not calculate expensive properties');
+    assert.equal(message.details[2].properties[1].name, 'hasChildren');
 
-    assert.equal(message.details[3], undefined, 'Correctly skips properties');
+    assert.ok(message.details[3].name !== 'MixinToSkip', 'Correctly skips mixins');
   });
 
 
@@ -502,7 +512,7 @@ module('Ember Debug - Object Inspector', function(hooks) {
     }).create();
 
     objectInspector.sendObject(inspected);
-    let serializedComputedProperty = message.details[0].properties[2];
+    let serializedComputedProperty = message.details[0].properties[0];
 
     assert.equal(serializedComputedProperty.code, computedFn.toString());
     assert.equal(serializedComputedProperty.dependentKeys[0], 'foo');

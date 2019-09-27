@@ -136,14 +136,13 @@ export default EmberObject.extend(PortMixin, {
   updateCurrentObject() {
     if (this.currentObject) {
       const {object, mixinDetails, objectId} = this.currentObject;
-      const errorsForObject = this.get('_errorsFor')[objectId] = {};
+      const isArrayProxy = object instanceof Ember.ArrayProxy;
       mixinDetails.forEach((mixin, mixinIndex) => {
         mixin.properties.forEach(item => {
           if (item.overridden) {
             return true;
           }
           try {
-            delete errorsForObject[item.name];
             let cache = cacheFor(object, item.name);
             if (item.isExpensive && !cache) return true;
             if (item.value.type === 'type-function') return true;
@@ -155,6 +154,11 @@ export default EmberObject.extend(PortMixin, {
 
             const desc = Object.getOwnPropertyDescriptor(object, item.name);
             const isSetter = desc && isMandatorySetter(desc);
+
+            const isNumberProperty = item.name == parseInt(item.name);
+            if (isArrayProxy && isNumberProperty) {
+              item.canTrack = false;
+            }
 
             if (glimmer && glimmer.validate && metal.track && item.canTrack && !isSetter) {
               let tagInfo = tracked[item.name] || { tag: metal.tagForProperty(object, item.name), revision: 0 };
@@ -169,7 +173,7 @@ export default EmberObject.extend(PortMixin, {
               }
               tracked[item.name] = tagInfo;
             } else {
-              value = get(object, item.name);
+              value = calculateCP(object, item.name, {});
               if (values[item.name] !== value) {
                 changed = true;
                 values[item.name] = value;
@@ -182,7 +186,7 @@ export default EmberObject.extend(PortMixin, {
               this.sendMessage('updateProperty', { objectId, property: item.name, value, mixinIndex });
             }
           } catch (e) {
-            errorsForObject[item.name] = e;
+            // dont do anything
           }
         });
       });
@@ -322,7 +326,7 @@ export default EmberObject.extend(PortMixin, {
     if (isNone(prop)) {
       value = this.sentObjects[objectId];
     } else {
-      value = get(object, prop);
+      value = calculateCP(object, prop, {});
     }
 
     this.sendValueToConsole(value);
@@ -342,7 +346,7 @@ export default EmberObject.extend(PortMixin, {
 
   digIntoObject(objectId, property) {
     let parentObject = this.sentObjects[objectId];
-    let object = get(parentObject, property);
+    let object = calculateCP(parentObject, property, {});
 
     if (this.canSend(object)) {
       const currentObject = this.currentObject;
@@ -466,10 +470,8 @@ export default EmberObject.extend(PortMixin, {
     delete mixin.properties.constructor;
 
     Ember.meta(object).forEachDescriptors((name, desc) => {
-      if (!mixin.properties[name]) return;
       mixin.properties[name] = desc;
     });
-
 
     Object.keys(mixin.properties).forEach(k => {
       if (typeof mixin.properties[k].value === 'function') {
@@ -484,11 +486,21 @@ export default EmberObject.extend(PortMixin, {
 
     mixin.properties = propertiesForMixin({ mixins: [mixin] });
     mixin.isEmberExtended = object.hasOwnProperty('_super');
+    mixin.isEmberObject = object.constructor === EmberObject.prototype.constructor;
+
+    const mixins = [mixin];
+    if (object instanceof Ember.ObjectProxy && object.content) {
+      mixins.push(...this.mixinDetailsForObject(object.content));
+    }
+
+    if (object instanceof Ember.ArrayProxy && object.content) {
+      mixins.push(...this.mixinDetailsForObject(object.content.toArray()));
+    }
 
     if (proto && !proto.hasOwnProperty('hasOwnProperty')) {
-      return [mixin, ...this.mixinDetailsForObject(proto)];
+      mixins.push(...this.mixinDetailsForObject(proto));
     }
-    return [mixin];
+    return mixins;
   },
 
   mixinsForObject(object) {
@@ -497,8 +509,8 @@ export default EmberObject.extend(PortMixin, {
     let mixinDetails = [];
 
     let objectMixins = this.mixinDetailsForObject(object);
-    // merge first 2 into own properties
-    if (objectMixins.length > 1) {
+    // merge first 2 into own properties, if its not created directly from EmberObject.create(...)
+    if (objectMixins.length > 1 && !objectMixins[1].isEmberObject) {
       objectMixins[0].properties = objectMixins[0].properties.concat(...objectMixins[1].properties).uniqBy('name');
       objectMixins.splice(1, 1);
     }
@@ -514,7 +526,6 @@ export default EmberObject.extend(PortMixin, {
           objectMixins[0].properties = objectMixins[0].properties.filter(o => !props.includes(o.name));
         });
       }
-
       // the base mixins appear again later in the mixins...
       mixins.splice(0, 1);
     }
@@ -538,7 +549,7 @@ export default EmberObject.extend(PortMixin, {
 
       mixinDetails.push({ name: name.toString(), properties: propertiesForMixin(mixin), expand: mixin.expand });
     });
-    mixinDetails.push(...objectMixins.slice(index+1, -1));
+    mixinDetails.push(...objectMixins.slice(index, -1));
     mixinDetails[0].name = 'Own Properties';
     mixinDetails[0].expand = true;
 
@@ -939,8 +950,15 @@ function customizeProperties(mixinDetails, propertyInfo) {
 
 function getDebugInfo(object) {
   let debugInfo = null;
-  // do not use get, conflicts with ember data promise
-  const objectDebugInfo = object._debugInfo;
+  let objectDebugInfo = get(object, '_debugInfo');
+  if (object instanceof Ember.ObjectProxy) {
+    if (!object.content) {
+      objectDebugInfo = null;
+    }
+    if (object.content) {
+      object = object.content;
+    }
+  }
   if (objectDebugInfo && typeof objectDebugInfo === 'function') {
     // We have to bind to object here to make sure the `this` context is correct inside _debugInfo when we call it
     debugInfo = objectDebugInfo.bind(object)();
@@ -969,22 +987,6 @@ function getDebugInfo(object) {
       'targetObject'
     );
   }
-
-  let meta = Ember.meta(object);
-  for (let prop in object) {
-    // in Ember 3.1+ CP's are eagerly invoked via a normal
-    // JS getter, this avoids invoking the computed property
-    // _just_ to determine if it was a function
-    let descriptor = meta.peekDescriptors(prop);
-    if (descriptor) {
-      continue;
-    }
-
-    // remove methods
-    if (typeof object[prop] === 'function') {
-      skipProperties.push(prop);
-    }
-  }
   return debugInfo;
 }
 
@@ -996,6 +998,9 @@ function toArray(errors) {
 function calculateCP(object, property, errorsForObject) {
   delete errorsForObject[property];
   try {
+    if (object instanceof Ember.ArrayProxy && property == parseInt(property)) {
+      return object.objectAt(property);
+    }
     return get(object, property);
   } catch(error) {
     errorsForObject[property] = { property, error };
