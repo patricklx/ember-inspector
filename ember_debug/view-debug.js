@@ -20,10 +20,12 @@ const {
   typeOf,
   Component,
   Controller,
-  A
+  A,
+  String
 } = Ember;
 const { throttle} = run;
 const { readOnly } = computed;
+const { classify } = String;
 
 const keys = Object.keys || Ember.keys;
 
@@ -377,7 +379,7 @@ export default EmberObject.extend(PortMixin, {
         output += `<p class='view'><span>view</span>=<span data-label='layer-view'>${escapeHTML(view.name)}</span></p>`;
       }
     } else {
-      output += `<p class='component'><span>component</span>=<span data-label='layer-component'>${escapeHTML(view.name)}</span></p>`;
+      output += `<p class='component'><span>component</span>=<span data-label='layer-component'>${classify(escapeHTML(view.name)).replace(/\//g, '::')}</span></p>`;
     }
 
     let model = options.model;
