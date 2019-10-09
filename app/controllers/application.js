@@ -82,6 +82,8 @@ export default Controller.extend({
    * Called when inspecting an object from outside of the ObjectInspector
   */
   activateMixinDetails(name, objectId, details, errors) {
+    // this is also called when the tree view refreshes, if there are many rerenders this will be called
+    // multiple times, therefore we check if the current mixinStack is also the current inspected object
     if (this.mixinStack.objectAt(0) && this.mixinStack.objectAt(0).objectId === objectId) {
       return;
     }
