@@ -71,6 +71,9 @@ export default Route.extend({
     let property = get(detail, 'properties').findBy('name', options.property);
     if (!property) return;
     set(property, 'value', options.value);
+    if (options.dependentKeys) {
+      set(property, 'dependentKeys', options.dependentKeys);
+    }
   },
 
   updateErrors(options) {

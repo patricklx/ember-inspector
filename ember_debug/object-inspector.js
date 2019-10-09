@@ -124,6 +124,41 @@ function isMandatorySetter(descriptor) {
   return false;
 }
 
+function getTagTrackedProps(tag, ownTag, level=0) {
+  const props = [];
+  if (!tag || level > 1) {
+    return props;
+  }
+  if (tag.subtag) {
+    if (tag.subtag._propertyKey) props.push(tag.subtag._propertyKey);
+    props.push(...getTagTrackedProps(tag.subtag, level + 1));
+  }
+  if (tag.subtags) {
+    tag.subtags.forEach((t) => {
+      if (t === ownTag) return;
+      if (t._propertyKey) props.push(t._propertyKey);
+      props.push(...getTagTrackedProps(t, level + 1));
+    });
+  }
+  return props;
+}
+
+function getTrackedDependencies(object, property, tag) {
+  const proto = Object.getPrototypeOf(object);
+  if (!proto) return [];
+  const cpDesc = Ember.meta(object).peekDescriptors(property);
+  const dependentKeys = [];
+  if (cpDesc) {
+    dependentKeys.push(...(cpDesc._dependentKeys || []));
+  }
+  if (metal) {
+    const ownTag = metal.tagForProperty(object, property);
+    dependentKeys.push(...getTagTrackedProps(tag, ownTag));
+  }
+
+  return [...new Set([...dependentKeys])];
+}
+
 export default EmberObject.extend(PortMixin, {
   namespace: null,
 
@@ -136,7 +171,6 @@ export default EmberObject.extend(PortMixin, {
   updateCurrentObject() {
     if (this.currentObject) {
       const {object, mixinDetails, objectId} = this.currentObject;
-      const isArrayProxy = object instanceof Ember.ArrayProxy;
       mixinDetails.forEach((mixin, mixinIndex) => {
         mixin.properties.forEach(item => {
           if (item.overridden) {
@@ -154,11 +188,6 @@ export default EmberObject.extend(PortMixin, {
 
             const desc = Object.getOwnPropertyDescriptor(object, item.name);
             const isSetter = desc && isMandatorySetter(desc);
-
-            const isNumberProperty = item.name == parseInt(item.name);
-            if (isArrayProxy && isNumberProperty) {
-              item.canTrack = false;
-            }
 
             if (glimmer && glimmer.validate && metal.track && item.canTrack && !isSetter) {
               let tagInfo = tracked[item.name] || { tag: metal.tagForProperty(object, item.name), revision: 0 };
@@ -183,7 +212,11 @@ export default EmberObject.extend(PortMixin, {
             if (changed) {
               value = inspectValue(object, item.name, value);
               value.isCalculated = true;
-              this.sendMessage('updateProperty', { objectId, property: item.name, value, mixinIndex });
+              let dependentKeys = null;
+              if (tracked[item.name]) {
+                dependentKeys = getTrackedDependencies(object, item.name, tracked[item.name].tag);
+              }
+              this.sendMessage('updateProperty', { objectId, property: item.name, value, mixinIndex, dependentKeys });
             }
           } catch (e) {
             // dont do anything
@@ -477,10 +510,6 @@ export default EmberObject.extend(PortMixin, {
       if (typeof mixin.properties[k].value === 'function') {
         return;
       }
-      if (mixin.properties[k].hasOwnProperty('get') || mixin.properties[k].hasOwnProperty('_getter')) {
-        mixin.properties[k]._dependentKeys = this.getTrackedDependencies(object, k);
-      }
-
       mixin.properties[k].isDescriptor = true;
     });
 
@@ -571,7 +600,8 @@ export default EmberObject.extend(PortMixin, {
     let objectId = this.retainObject(object);
 
     let errorsForObject = this.get('_errorsFor')[objectId] = {};
-    calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties);
+    const tracked = this.trackedTags[objectId] = this.trackedTags[objectId]  || {};
+    calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties, tracked);
 
     this.currentObject = { object, mixinDetails, objectId };
 
@@ -595,39 +625,6 @@ export default EmberObject.extend(PortMixin, {
 
       return { objectId, property, value, mixinIndex };
     }
-  },
-
-  getTagTrackedProps(tag, level=0) {
-    const props = [];
-    if (!tag || level > 1) {
-      return props;
-    }
-    if (tag.subtag) {
-      props.push(...this.getTagTrackedProps(tag.subtag, level + 1));
-    }
-    if (tag.subtags) {
-      tag.subtags.forEach((t) => {
-        if (t._propertyKey) props.push(t._propertyKey);
-        props.push(...this.getTagTrackedProps(t, level + 1));
-      });
-    }
-    return props;
-  },
-
-  getTrackedDependencies(object, property) {
-    const proto = Object.getPrototypeOf(object);
-    if (!proto) return [];
-    const cpDesc = Ember.meta(object).peekDescriptors(property);
-    const dependentKeys = [];
-    if (cpDesc) {
-      dependentKeys.push(...(cpDesc._dependentKeys || []));
-    }
-    const desc = Object.getOwnPropertyDescriptor(proto, property);
-    if (desc && metal) {
-      dependentKeys.push(...this.getTagTrackedProps(metal.tagForProperty(object, property)));
-    }
-
-    return [...new Set([...dependentKeys])];
   },
 
   inspect,
@@ -723,6 +720,7 @@ function addProperties(properties, hash) {
         options.code = '';
       }
       options.isGetter = true;
+      options.canTrack = true;
     }
     if (desc.hasOwnProperty('value') || options.isMandatorySetter) {
       delete options.isGetter;
@@ -813,9 +811,8 @@ function applyMixinOverrides(mixinDetails) {
   });
 }
 
-function calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties) {
+function calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties, tracked) {
   expensiveProperties = expensiveProperties || [];
-
   mixinDetails.forEach(mixin => {
     mixin.properties.forEach(item => {
       if (item.overridden) {
@@ -825,7 +822,17 @@ function calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties
         let cache = cacheFor(object, item.name);
         item.isExpensive = expensiveProperties.indexOf(item.name) >= 0;
         if (cache !== undefined || !item.isExpensive) {
-          let value = calculateCP(object, item.name, errorsForObject);
+          let value;
+          if (item.canTrack) {
+            const tagInfo = tracked[item.name] = {};
+            tagInfo.tag = metal.track(() => {
+              value = calculateCP(object, item.name, errorsForObject);
+            });
+            tagInfo.revision = glimmer.value(object, item.name);
+            item.dependentKeys = getTrackedDependencies(object, item.name, tagInfo.tag);
+          } else {
+           value = calculateCP(object, item.name, errorsForObject);
+          }
           if (!value || !(value instanceof CalculateCPError)) {
             item.value = inspectValue(object, item.name, value);
             item.value.isCalculated = true;
