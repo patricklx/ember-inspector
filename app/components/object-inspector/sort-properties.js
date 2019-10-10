@@ -37,24 +37,35 @@ export default Component.extend({
     return p;
   }),
 
-  init() {
-    this._super(...arguments);
-
-    /**
-     * Used by the `sort` computed macro.
-     *
-     * @property sortProperties
-     * @type {Array<String>}
-     */
-    this.sortProperties = [
+  /**
+   * Used by the `sort` computed macro.
+   *
+   * @property sortProperties
+   * @type {Array<String>}
+   */
+  sortProperties: computed('props', function () {
+    const props = this.get('props') || [];
+    // change order for arrays, if the array doesnt have items, then the order does not need to be changed
+    if (props.findBy('name', 'length') && props.findBy('name', 0)) {
+      return [
+        'isFunction',
+        'isService:desc',
+        'isTracked:desc',
+        'isComputed:desc',
+        'isGetter:desc',
+        'isProperty:desc',
+        'name'
+      ];
+    }
+    return [
       'isFunction',
       'isService:desc',
+      'isProperty:desc',
       'isTracked:desc',
       'isComputed:desc',
       'isGetter:desc',
-      'isProperty:desc',
       'name'
     ];
-  },
+  })
 });
 

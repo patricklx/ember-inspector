@@ -730,6 +730,7 @@ function addProperties(properties, hash) {
     }
     if (desc.hasOwnProperty('value') || options.isMandatorySetter) {
       delete options.isGetter;
+      delete options.isTracked;
       options.isProperty = true;
       options.canTrack = false;
     }
