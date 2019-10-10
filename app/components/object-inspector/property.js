@@ -88,14 +88,14 @@ export default Component.extend({
   },
 
   cannotEdit() {
-    if (this.model.name === '...') return true;
-    if (!this.isCalculated) return true;
+    if (this.model.name === '...' || !this.isCalculated) return true;
     return this.isFunction || this.isOverridden || this.readOnly;
   },
 
   toggleDeps: action(function () {
-    if (!this.hasDependentKeys) return;
-    this.toggleProperty('isDepsExpanded');
+    if (this.hasDependentKeys) {
+      this.toggleProperty('isDepsExpanded');
+    }
   }),
 
   valueClick: action(function () {

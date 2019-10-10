@@ -66,13 +66,14 @@ export default Route.extend({
   },
 
   updateProperty(options) {
-    if (!this.get('controller.mixinDetails.mixins')) return;
-    const detail = this.get('controller.mixinDetails.mixins').objectAt(options.mixinIndex);
-    let property = get(detail, 'properties').findBy('name', options.property);
-    if (!property) return;
-    set(property, 'value', options.value);
-    if (options.dependentKeys) {
-      set(property, 'dependentKeys', options.dependentKeys);
+    if (this.get('controller.mixinDetails.mixins')) {
+      const detail = this.get('controller.mixinDetails.mixins').objectAt(options.mixinIndex);
+      let property = get(detail, 'properties').findBy('name', options.property);
+      if (!property) return;
+      set(property, 'value', options.value);
+      if (options.dependentKeys) {
+        set(property, 'dependentKeys', options.dependentKeys);
+      }
     }
   },
 
