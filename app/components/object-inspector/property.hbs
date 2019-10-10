@@ -19,10 +19,10 @@
   {{/if}}
 
   {{!-- Property Icon --}}
-  <span class="mixin__property-icon-container" title={{if @model.code @model.code this.icon.title}}
+  <span class="mixin__property-icon-container" title={{if @model.code @model.code this.iconInfo.title}}
     {{on "click" this.toggleDeps}}
   >
-    <span class="mixin__property-icon mixin__property-icon--{{this.icon.type}}"></span>
+    <span class="mixin__property-icon mixin__property-icon--{{this.iconInfo.type}}"></span>
   </span>
 
   {{!-- Property Name --}}
