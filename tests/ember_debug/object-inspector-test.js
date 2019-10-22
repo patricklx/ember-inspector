@@ -82,6 +82,9 @@ module('Ember Debug - Object Inspector', function(hooks) {
 
     objectInspector.sendObject(inspected);
 
+
+    console.log(message);
+
     assert.equal(name, 'objectInspector:updateObject');
 
     assert.equal(message.name, 'Object:My Object');
@@ -115,7 +118,7 @@ module('Ember Debug - Object Inspector', function(hooks) {
     assert.equal(nameProperty.value.inspect, inspect('My Object'));
 
     let secondDetail = message.details[1];
-    assert.equal(secondDetail.name, '(unknown)');
+    assert.equal(secondDetail.name, 'EmberObject');
   });
 
   test('An ES6 Class is correctly transformed into an inspection hash', function(assert) {
@@ -244,8 +247,8 @@ module('Ember Debug - Object Inspector', function(hooks) {
       'MyMixin2',
       'Bar',
       'Baz',
-      'Unknown mixin',
-      // core object
+      'EmberObject',
+      'Ember.CoreObject'
     ];
 
     console.log(message);

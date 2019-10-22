@@ -488,7 +488,6 @@ export default EmberObject.extend(PortMixin, {
   },
 
   mixinDetailsForObject(object) {
-
     const mixins = [];
     const proto = Object.getPrototypeOf(object);
     if (proto && !proto.hasOwnProperty('hasOwnProperty')) {
@@ -501,7 +500,7 @@ export default EmberObject.extend(PortMixin, {
       mixins.push(...this.mixinDetailsForObject(object.content.toArray()));
     }
     // eslint-disable-next-line ember/no-new-mixins
-    const emberMixins = Mixin.mixins(object).filter(m => m.mixins.length === 1);
+    const emberMixins = Mixin.mixins(object);
 
     const getName = function() {
       // dont use mixin toString for object name
@@ -518,13 +517,16 @@ export default EmberObject.extend(PortMixin, {
       };
       let name = object.constructor.name;
       if (isValidToString(object)) {
-        return object.toString();
+        const n = object.toString();
+        if (!n.startsWith('<')) return n;
       }
       if (isValidToString(object.constructor)) {
-        return object.constructor.toString();
+        const n = object.constructor.toString();
+        if (!n.startsWith('<')) return n;
       }
       if (isValidToString(proto)) {
-        return proto.toString();
+        const n = proto.toString();
+        if (!n.startsWith('<')) return n;
       }
       if (name === 'Class' || name.startsWith('_') || name.length === 1) {
         name = object.toString();
@@ -554,8 +556,8 @@ export default EmberObject.extend(PortMixin, {
 
     // insert ember mixins
     emberMixins.reverse().forEach((mixin) => {
+      let name = (mixin[Ember.NAME_KEY] || mixin.ownerConstructor || '').toString();
 
-      let name = '';
       if (typeof mixin.toString === 'function') {
         try {
           name = mixin.toString();
@@ -596,6 +598,11 @@ export default EmberObject.extend(PortMixin, {
     mixin.properties = mixinProperties;
     mixin.isEmberExtended = object.hasOwnProperty('_super');
     mixin.isEmberObject = object.constructor === EmberObject.prototype.constructor;
+
+    // skip merged mixin class (the class which represents A.extend(x, y))
+    if (object.hasOwnProperty('constructor') && object.constructor.PrototypeMixin && object.constructor.PrototypeMixin.mixins) {
+      return mixins;
+    }
 
     mixins.push(mixin);
     return mixins;
