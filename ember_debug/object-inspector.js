@@ -500,7 +500,7 @@ export default EmberObject.extend(PortMixin, {
       mixins.push(...this.mixinDetailsForObject(object.content.toArray()));
     }
     // eslint-disable-next-line ember/no-new-mixins
-    const emberMixins = Mixin.mixins(object);
+    const emberMixins = Mixin.mixins(object).slice(0, -1);
 
     const getName = function() {
       // dont use mixin toString for object name
