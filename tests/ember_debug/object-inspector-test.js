@@ -205,6 +205,56 @@ module('Ember Debug - Object Inspector', function(hooks) {
 
   });
 
+  test('Correct mixin order with es6 class', function (assert) {
+
+    // eslint-disable-next-line ember/no-new-mixins
+    const MyMixin = Mixin.create({
+      a: 'custom',
+      toString() {
+        return 'MyMixin';
+      }
+    });
+    // eslint-disable-next-line ember/no-new-mixins
+    const MyMixin2 = Mixin.create({
+      b: 'custom2',
+      toString() {
+        return 'MyMixin2';
+      }
+    });
+
+    class Baz extends EmberObject {}
+    class Bar extends Baz {}
+    class FooBar extends Bar.extend(MyMixin, MyMixin2) {}
+
+    class Foo extends FooBar {
+      foobar = 1
+    }
+
+    const instance = Foo.create({
+      ownProp: 'hi'
+    });
+
+    objectInspector.sendObject(instance);
+
+    const mixinNames = message.details.map(d => d.name);
+    const expectedMixinNames = [
+      'Own Properties',
+      'FooBar',
+      'MyMixin',
+      'MyMixin2',
+      'Bar',
+      'Baz',
+      'Unknown mixin',
+      // core object
+    ];
+
+    console.log(message);
+
+    expectedMixinNames.forEach((expectedMixinName, i) => {
+      assert.equal(mixinNames[i], expectedMixinName);
+    });
+  });
+
   test('Computed properties are correctly calculated', function(assert) {
     let inspected = EmberObject.extend({
       hi: computed(function() {

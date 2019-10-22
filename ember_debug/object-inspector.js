@@ -138,6 +138,7 @@ function isMandatorySetter(descriptor) {
 
 function getTagTrackedProps(tag, ownTag, level=0) {
   const props = [];
+  // do not include tracked properties from dependencies
   if (!tag || level > 1) {
     return props;
   }
@@ -488,16 +489,41 @@ export default EmberObject.extend(PortMixin, {
 
   mixinDetailsForObject(object) {
 
+    const mixins = [];
     const proto = Object.getPrototypeOf(object);
-    const getName = function () {
+    if (proto && !proto.hasOwnProperty('hasOwnProperty')) {
+      mixins.push(...this.mixinDetailsForObject(proto));
+    }
+    if (object instanceof Ember.ObjectProxy && object.content) {
+      mixins.push(...this.mixinDetailsForObject(object.content));
+    }
+    if (object instanceof Ember.ArrayProxy && object.content) {
+      mixins.push(...this.mixinDetailsForObject(object.content.toArray()));
+    }
+    // eslint-disable-next-line ember/no-new-mixins
+    const emberMixins = Mixin.mixins(object).filter(m => m.mixins.length === 1);
+
+    const getName = function() {
+      // dont use mixin toString for object name
+      const mixinsToString = [];
+      emberMixins.forEach((m) => {
+        const found = (m.mixins || []).map(mix => mix.properties && mix.properties.toString).filter(toString => !!toString);
+        mixinsToString.push(...found);
+      });
+      const isValidToString = function(obj) {
+        if (!obj.hasOwnProperty('toString') || obj.hasOwnProperty('hasOwnProperty')) {
+          return false;
+        }
+        return !mixinsToString.includes(obj.toString);
+      };
       let name = object.constructor.name;
-      if (object.hasOwnProperty('toString')) {
+      if (isValidToString(object)) {
         return object.toString();
       }
-      if (object.constructor.hasOwnProperty('toString')) {
+      if (isValidToString(object.constructor)) {
         return object.constructor.toString();
       }
-      if (proto.hasOwnProperty('toString') && !proto.hasOwnProperty('hasOwnProperty')) {
+      if (isValidToString(proto)) {
         return proto.toString();
       }
       if (name === 'Class' || name.startsWith('_') || name.length === 1) {
@@ -508,7 +534,8 @@ export default EmberObject.extend(PortMixin, {
 
     const mixin = {
       properties: {},
-      name: getName(),
+      id: guidFor(object),
+      name: getName(object),
     };
 
     mixin.properties = Object.getOwnPropertyDescriptors(object);
@@ -525,63 +552,26 @@ export default EmberObject.extend(PortMixin, {
       mixin.properties[k].isDescriptor = true;
     });
 
-    mixin.properties = propertiesForMixin({ mixins: [mixin] });
-    mixin.isEmberExtended = object.hasOwnProperty('_super');
-    mixin.isEmberObject = object.constructor === EmberObject.prototype.constructor;
+    // insert ember mixins
+    emberMixins.reverse().forEach((mixin) => {
 
-    const mixins = [mixin];
-    if (object instanceof Ember.ObjectProxy && object.content) {
-      mixins.push(...this.mixinDetailsForObject(object.content));
-    }
-
-    if (object instanceof Ember.ArrayProxy && object.content) {
-      mixins.push(...this.mixinDetailsForObject(object.content.toArray()));
-    }
-
-    if (proto && !proto.hasOwnProperty('hasOwnProperty')) {
-      mixins.push(...this.mixinDetailsForObject(proto));
-    }
-    return mixins;
-  },
-
-  mixinsForObject(object) {
-    // eslint-disable-next-line ember/no-new-mixins
-    let mixins = Mixin.mixins(object);
-    let mixinDetails = [];
-
-    let objectMixins = this.mixinDetailsForObject(object);
-    // merge first 2 into own properties, if its not created directly from EmberObject.create(...)
-    if (objectMixins.length > 1 && !objectMixins[1].isEmberObject) {
-      const allProperties = Ember.A(objectMixins[0].properties.concat(...objectMixins[1].properties));
-      objectMixins[0].properties = allProperties.uniqBy('name').toArray();
-      objectMixins.splice(1, 1);
-    }
-    // find first ember extended object to show mixins afterwards
-    let index = objectMixins.findIndex(o => o.isEmberExtended);
-    if (index < 0) index = objectMixins.length;
-    if (index <= 1) {
-      index = 1;
-      // remove properties that are in mixins, but not itself
-      if (mixins[0] && mixins[0].mixins) {
-        mixins[0].mixins.slice(0, -1).forEach((m) => {
-          const props = Object.keys((m.mixins && m.mixins[0] && m.mixins[0].properties) || {});
-          objectMixins[0].properties = objectMixins[0].properties.filter(o => !props.includes(o.name));
-        });
-      }
-      // the base mixins appear again later in the mixins...
-      mixins.splice(0, 1);
-    }
-    mixinDetails.push(...objectMixins.slice(0, index));
-    const objectName = mixinDetails[0].name;
-
-    mixins.forEach(mixin => {
-      let name = mixin[Ember.NAME_KEY] || mixin.ownerConstructor;
-
-      if (!name && typeof mixin.toString === 'function') {
+      let name = '';
+      if (typeof mixin.toString === 'function') {
         try {
           name = mixin.toString();
+          if (name === '(unknown)') {
+            name = '';
+          }
         } catch(e) {
           name = '(Unable to convert Object to string)';
+        }
+      }
+
+      if (!name && get(mixin, 'mixins.0.properties') && mixin.mixins[0].properties.hasOwnProperty('toString')) {
+        try {
+          name = mixin.mixins[0].properties.toString();
+        } catch (e) {
+          // skip
         }
       }
 
@@ -589,9 +579,42 @@ export default EmberObject.extend(PortMixin, {
         name = 'Unknown mixin';
       }
 
-      mixinDetails.push({ name: name.toString(), properties: propertiesForMixin(mixin), expand: mixin.expand });
+      const mix = {
+        properties: propertiesForMixin(mixin),
+        name: name,
+        isEmberMixin: true,
+        id: guidFor(mixin)
+      };
+      if (!mixins.find(m => m.id === mix.id)) {
+        mixins.push(mix);
+      }
     });
-    mixinDetails.push(...objectMixins.slice(index, -1));
+
+    // Clean the properties, removing private props and bindings, etc
+    const mixinProperties = [];
+    addProperties(mixinProperties, mixin.properties);
+    mixin.properties = mixinProperties;
+    mixin.isEmberExtended = object.hasOwnProperty('_super');
+    mixin.isEmberObject = object.constructor === EmberObject.prototype.constructor;
+
+    mixins.push(mixin);
+    return mixins;
+  },
+
+  mixinsForObject(object) {
+    // eslint-disable-next-line ember/no-new-mixins
+    let mixinDetails = [];
+
+    let objectMixins = this.mixinDetailsForObject(object).reverse();
+    // merge first 2 into own properties, if its not created directly from EmberObject.create(...)
+    if (objectMixins.length > 1 && !objectMixins[1].isEmberObject) {
+      const allProperties = Ember.A(objectMixins[0].properties.concat(...objectMixins[1].properties));
+      objectMixins[0].properties = allProperties.uniqBy('name').toArray();
+      objectMixins.splice(1, 1);
+    }
+
+    mixinDetails.push(...objectMixins);
+    const objectName = mixinDetails[0].name;
     mixinDetails[0].name = 'Own Properties';
     mixinDetails[0].expand = true;
 
@@ -845,7 +868,7 @@ function calculateCPs(object, mixinDetails, errorsForObject, expensiveProperties
             tagInfo.tag = metal.track(() => {
               value = calculateCP(object, item.name, errorsForObject);
             });
-            if (!tagInfo.tag.subtag && !tagInfo.tag.subtags && tagInfo.tag === metal.tagForProperty(object, item.name)) {
+            if (tagInfo.tag === metal.tagForProperty(object, item.name)) {
               if (!item.isComputed && !item.isService) {
                 item.code = '';
                 item.isTracked = true;
