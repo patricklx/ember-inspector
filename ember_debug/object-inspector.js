@@ -876,6 +876,8 @@ function replaceProperty(properties, name, value, options) {
     properties.splice(i, 1);
   }
 
+  // convert string names to number if they are
+  name = Number(name).toString() === name ? Number(name) : name;
   let prop = { name, value };
   prop.isMandatorySetter = options.isMandatorySetter;
   prop.readOnly = options.readOnly;
