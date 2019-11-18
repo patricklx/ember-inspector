@@ -21,20 +21,22 @@ export default Component.extend({
     // limit arrays
     let props = A(this.get('sorted'));
     if (this.isArray()) {
-      const item = props.findBy('name', 'length');
-      props.removeObject(item);
-      props.splice(0, 0, item);
-    }
-    if (this.isArray() && this.get('sorted.length') > 100) {
-      const indicator = {
-        name: '...',
-        value: {
-          inspect: 'there are more items, send to console to see all'
-        }
-      };
-      props = props.slice(0, 100);
-      props.push(indicator);
-      return props;
+      const lenItem = props.findBy('name', 'length');
+      props.removeObject(lenItem);
+      props.splice(0, 0, lenItem);
+      if (this.get('sorted.length') < 100) {
+        props = props.slice(0, lenItem.value.inspect, 101);
+      }
+      if (this.get('sorted.length') > 100) {
+        const indicator = {
+          name: '...',
+          value: {
+            inspect: 'there are more items, send to console to see all'
+          }
+        };
+        props.push(indicator);
+        return props;
+      }
     }
     return this.get('sorted');
   }),
