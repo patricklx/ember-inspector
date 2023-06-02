@@ -1,5 +1,6 @@
 import captureRenderTree from './capture-render-tree';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
+import { registerDestructor } from '@ember/destroyable';
 
 export default class RenderTree {
   /**
@@ -15,13 +16,166 @@ export default class RenderTree {
     this.retainObject = retainObject;
     this.releaseObject = releaseObject;
     this.inspectNode = inspectNode;
+    this.nodeMap = new Map();
+    this.remoteRoots = [];
     this._reset();
+    try {
+      this.setupInElementSupport(owner);
+    } catch (e) {
+      // not supported
+    }
+
+
     // need to have different ids per application / iframe
     // to distinguish the render nodes it in the inspector
     // between apps
     this.renderNodeIdPrefix = guidFor(this);
   }
 
+  setupInElementSupport(owner) {
+    // eslint-disable-next-line no-undef
+    const { NewElementBuilder } = requirejs('@glimmer/runtime');
+    let Wormhole = null;
+    try {
+      // eslint-disable-next-line no-undef
+      Wormhole = requirejs('ember-wormhole/components/ember-wormhole');
+    } catch (e) {
+      Wormhole = null;
+    }
+
+    let currentNode = null;
+    const nodeStack = [];
+    const renderTree = this;
+    const renderer = owner.lookup('renderer:-dom').debugRenderTree;
+    this.debugRenderTree = renderer;
+    const captureNode = this.debugRenderTree.captureNode;
+    const enter = renderer.enter;
+    const exit = renderer.exit;
+
+    this.debugRenderTree.captureNode = function (id, state) {
+      const node = this.nodeFor(state);
+      renderTree.nodeMap.set(node, id);
+      const capture = captureNode.call(this, id, state);
+      node.remotes?.forEach((remote) => {
+        remote.id = 'remote-render-node:' + renderTree.remoteRoots.length;
+        renderTree.nodeMap.set(remote, remote.id);
+        renderTree.remoteRoots.push(remote);
+        capture.children.splice(remote.index, 0, remote);
+      });
+      if (Wormhole && capture.instance instanceof Wormhole.default) {
+        renderTree.remoteRoots.push(capture);
+        const bounds = capture.bounds;
+        Object.defineProperty(capture, 'bounds', {
+          get() {
+            if (capture.instance._destination) {
+              return {
+                firstNode: capture.instance._destination,
+                lastNode: capture.instance._destination,
+                parentElement: capture.instance._destination.parentElement,
+              };
+            }
+            return bounds;
+          },
+        });
+      }
+      return capture;
+    };
+
+    renderer.enter = function (state) {
+      currentNode = this.nodeFor(state);
+      nodeStack.push(currentNode);
+      return enter.call(this, state);
+    };
+
+    renderer.exit = function (state) {
+      nodeStack.pop();
+      currentNode = nodeStack[nodeStack.length - 1];
+      return exit.call(this, state);
+    };
+
+    const pushRemoteElement = NewElementBuilder.prototype.pushRemoteElement;
+    const pushElement = NewElementBuilder.prototype.pushElement;
+    const didAppendNode = NewElementBuilder.prototype.didAppendNode;
+    NewElementBuilder.prototype.didAppendNode = function (node) {
+      node.__emberInspectorParentNode = currentNode;
+      return didAppendNode.call(this, node);
+    };
+
+    NewElementBuilder.prototype.pushElement = function (node) {
+      node.__emberInspectorParentNode = currentNode;
+      return pushElement.call(this, node);
+    };
+
+    function buildInElementNode(node) {
+      const obj = Object.create(null);
+      obj.index = currentNode.refs.size;
+      obj.name = 'in-element';
+      obj.type = 'component';
+      obj.template = null;
+      obj.args = {
+        positional: [],
+        named: {
+          destination: node,
+        },
+      };
+      obj.instance = {
+        constructor: {
+          name: 'InElement',
+        },
+      };
+      obj.remoteTarget = node;
+      obj.bounds = {
+        firstNode: node,
+        lastNode: node,
+        parentElement: node.parentElement,
+      };
+      obj.children = [];
+      return obj;
+    }
+
+    NewElementBuilder.prototype.pushRemoteElement = function (node) {
+      const obj = buildInElementNode(node);
+      if (currentNode) {
+        currentNode.remotes = currentNode.remotes || [];
+        currentNode.remotes.push(obj);
+      }
+      renderTree.remoteRoots.push(obj);
+      const currNode = currentNode;
+      const block = pushRemoteElement.call(this, node);
+      registerDestructor(block, () => {
+        renderTree.remoteRoots.removeObject(obj);
+        currNode.remotes.removeObject(obj);
+      });
+      currentNode = obj;
+      return block;
+    };
+
+    this.orginalFunctions = {
+      exit,
+      enter,
+      pushElement,
+      pushRemoteElement,
+      didAppendNode,
+      captureNode,
+    };
+  }
+
+  resetInElementSupport() {
+    if (!this.orginalFunctions) {
+      return
+    }
+    this.debugRenderTree.exit = this.orginalFunctions.exit;
+    this.debugRenderTree.enter = this.orginalFunctions.enter;
+    this.debugRenderTree.captureNode = this.orginalFunctions.captureNode;
+
+    // eslint-disable-next-line no-undef
+    const { NewElementBuilder } = requirejs('@glimmer/runtime');
+    NewElementBuilder.prototype.pushElement = this.orginalFunctions.pushElement;
+    NewElementBuilder.prototype.pushRemoteElement =
+      this.orginalFunctions.pushRemoteElement;
+    NewElementBuilder.prototype.didAppendNode =
+      this.orginalFunctions.didAppendNode;
+  }
   /**
    * Capture the render tree and serialize it for sending.
    *
@@ -88,14 +242,28 @@ export default class RenderTree {
     // we can heuristically start the search from the parent render node (which would also
     // match against this node and its children), then only fallback to matching the entire
     // tree when there is no match in this subtree.
+
+    if (node.__emberInspectorParentNode && this.nodeMap.get(node)) {
+      const n = this.nodes[this.nodeMap.get(node)];
+      if (n) {
+        return this._serializeRenderNode(n);
+      }
+    }
+
     let hintNode = this._findUp(this.nodes[hint]);
 
     let renderNode;
 
     if (hintNode) {
-      renderNode = this._matchRenderNodes([hintNode, ...this.tree], node);
+      renderNode = this._matchRenderNodes(
+        [hintNode, ...this.remoteRoots, ...this.tree],
+        node
+      );
     } else {
-      renderNode = this._matchRenderNodes(this.tree, node);
+      renderNode = this._matchRenderNodes(
+        [...this.remoteRoots, ...this.tree],
+        node
+      );
     }
 
     if (renderNode) {
@@ -218,10 +386,13 @@ export default class RenderTree {
   teardown() {
     this._reset();
     this._releaseStaleObjects();
+    this.resetInElementSupport();
   }
 
   _reset() {
     this.tree = [];
+    this.nodeMap.clear();
+    this.remoteRoots.clear();
     this.nodes = Object.create(null);
     this.parentNodes = Object.create(null);
     this.serialized = Object.create(null);
@@ -259,6 +430,7 @@ export default class RenderTree {
 
       this.serialized[node.id] = serialized = {
         ...node,
+        remoteTarget: undefined,
         args: this._serializeArgs(node.args),
         instance: this._serializeItem(
           node.instance ||

@@ -1,8 +1,15 @@
-import { click, find, triggerEvent, visit } from '@ember/test-helpers';
+import {
+  click,
+  find,
+  rerender,
+  triggerEvent,
+  visit,
+} from '@ember/test-helpers';
 import hasEmberVersion from '@ember/test-helpers/has-ember-version';
 import { A } from '@ember/array';
 import { run } from '@ember/runloop';
-import EmberComponent from '@ember/component';
+import EmberComponent, { setComponentTemplate } from '@ember/component';
+import GlimmerComponent from '@glimmer/component';
 import EmberRoute from '@ember/routing/route';
 import EmberObject from '@ember/object';
 import Controller from '@ember/controller';
@@ -40,15 +47,20 @@ async function captureMessage(type, callback) {
   try {
     let captured;
 
-    EmberDebug.port.send = (name, message) => {
-      if (!captured && name === type) {
-        captured = message;
-      } else {
-        send.call(EmberDebug.port, name, message);
-      }
-    };
+    const receivedPromise = new Promise((resolve) => {
+      setTimeout(resolve, 500);
+      EmberDebug.port.send = (name, message) => {
+        if (!captured && name === type) {
+          resolve();
+          captured = message;
+        } else {
+          send.call(EmberDebug.port, name, message);
+        }
+      };
+    });
 
     await callback();
+    await receivedPromise;
 
     if (captured) {
       return captured;
@@ -66,14 +78,12 @@ async function digDeeper(objectId, property) {
       objectId,
       property,
     });
-    await timeout(300);
   });
 }
 
 async function getRenderTree() {
   let message = await captureMessage('view:renderTree', async () => {
     EmberDebug.port.trigger('view:getTree', {});
-    await timeout(300);
   });
 
   if (message) {
@@ -292,6 +302,9 @@ module('Ember Debug - View', function (hooks) {
   setupEmberDebugTest(hooks, {
     routes() {
       this.route('simple');
+      this.route('test-in-element-in-component');
+      this.route('test-component-in-in-element');
+      this.route('wormhole');
       this.route('inputs');
       this.route('comments', { resetNamespace: true }, function () {});
       this.route('posts', { resetNamespace: true });
@@ -321,6 +334,45 @@ module('Ember Debug - View', function (hooks) {
           return EmberObject.create({
             toString() {
               return 'Simple Model';
+            },
+          });
+        },
+      })
+    );
+
+    this.owner.register(
+      'route:test-in-element-in-component',
+      EmberRoute.extend({
+        model() {
+          return EmberObject.create({
+            toString() {
+              return 'test-in-element-in-component Model';
+            },
+          });
+        },
+      })
+    );
+
+    this.owner.register(
+      'route:test-component-in-in-element',
+      EmberRoute.extend({
+        model() {
+          return EmberObject.create({
+            toString() {
+              return 'Simple Model';
+            },
+          });
+        },
+      })
+    );
+
+    this.owner.register(
+      'route:wormhole',
+      EmberRoute.extend({
+        model() {
+          return EmberObject.create({
+            toString() {
+              return 'Wormhole Model';
             },
           });
         },
@@ -397,6 +449,45 @@ module('Ember Debug - View', function (hooks) {
         })
     );
 
+    this.owner.register(
+      'component:test-in-element-in-component',
+      setComponentTemplate(
+        hbs(`
+          {{#in-element this.element}}
+            <p class='test-in-element-in-component'>
+              App.TestInElementInComponent
+            </p>
+          {{/in-element}}
+        `),
+        class TestInElement extends GlimmerComponent {
+          constructor(owner, args) {
+            super(owner, args);
+
+            this.element = document.querySelector('#target');
+          }
+          toString() {
+            return 'App.TestInElementInComponent';
+          }
+        }
+      )
+    );
+
+    this.owner.register(
+      'component:test-component-in-in-element',
+      setComponentTemplate(
+        hbs(`
+            <p class='test-component-in-in-element'>
+              App.TestComponentInElement
+            </p>
+        `),
+        class TestComponentInInElement extends GlimmerComponent {
+          toString() {
+            return 'App.TestComponentInElement';
+          }
+        }
+      )
+    );
+
     /*
     Setting line-height to normal because normalize.css sets the
     html line-height to 1.15. This seems to cause a measurement
@@ -405,15 +496,46 @@ module('Ember Debug - View', function (hooks) {
     this.owner.register(
       'template:application',
       hbs(
-        '<div class="application" style="line-height: normal;">{{outlet}}</div>',
+        `<div class="application" style="line-height: normal;">
+          <div id="target"></div>
+          {{outlet}}
+        </div>`,
         { moduleName: 'my-app/templates/application.hbs' }
       )
     );
+
     this.owner.register(
       'template:simple',
-      hbs('Simple {{test-foo}} {{test-bar value=(hash x=123 [x.y]=456)}}', {
-        moduleName: 'my-app/templates/simple.hbs',
+      hbs(
+        'Simple {{test-foo}} {{test-bar value=(hash x=123 [x.y]=456)}} <TestInElementInComponent />',
+        {
+          moduleName: 'my-app/templates/simple.hbs',
+        }
+      )
+    );
+
+    this.owner.register(
+      'template:test-in-element-in-component',
+      hbs('<TestInElementInComponent />', {
+        moduleName: 'my-app/templates/test-in-element-in-component.hbs',
       })
+    );
+
+    this.owner.register(
+      'template:test-component-in-in-element',
+      hbs('<TestComponentInInElement />', {
+        moduleName: 'my-app/templates/test-component-in-in-element.hbs',
+      })
+    );
+
+    this.owner.register(
+      'template:wormhole',
+      hbs(
+        '<EmberWormhole @to="target"><div class="in-wormhole">Wormhole</div></EmberWormhole>',
+        {
+          moduleName: 'my-app/templates/wormhole.hbs',
+        }
+      )
     );
     this.owner.register(
       'template:inputs',
@@ -441,7 +563,13 @@ module('Ember Debug - View', function (hooks) {
     this.owner.register(
       'template:components/test-bar',
       hbs(
-        '<!-- before --><div class="another-component">{{@value}}<span>test</span> <span class="bar-inner">bar</span></div><!-- after -->',
+        `<!-- before -->
+        <div class="another-component">
+        {{@value}}
+          <span>test</span>
+          <span class="bar-inner">bar</span>
+        </div>
+        <!-- after -->`,
         { moduleName: 'my-app/templates/components/test-bar.hbs' }
       )
     );
@@ -514,7 +642,19 @@ module('Ember Debug - View', function (hooks) {
                 }
                 argsTestPromise = testArgsValue();
               },
-            })
+            }),
+            Component(
+              {
+                name: 'test-in-element-in-component',
+                bounds: 'range',
+                template: /.*/,
+              },
+              Component({
+                name: 'in-element',
+                args: Args({ names: ['destination'], positionals: 0 }),
+                template: null,
+              })
+            )
           )
         )
       ),
@@ -563,7 +703,19 @@ module('Ember Debug - View', function (hooks) {
               name: 'test-bar',
               bounds: 'range',
               args: Args({ names: ['value'], positionals: 0 }),
-            })
+            }),
+            Component(
+              {
+                name: 'test-in-element-in-component',
+                bounds: 'range',
+                template: /.*/,
+              },
+              Component({
+                name: 'in-element',
+                args: Args({ names: ['destination'], positionals: 0 }),
+                template: null,
+              })
+            )
           )
         )
       ),
@@ -610,124 +762,260 @@ module('Ember Debug - View', function (hooks) {
     ]);
   });
 
-  test('Highlighting Views on hover', async function (assert) {
-    await visit('/simple');
-    await getRenderTree();
+  module('Highlighting Views on hover', function (hooks) {
+    let foo;
+    let bar;
+    let inElement;
+    let tooltip;
+    let highlight;
 
-    let foo = find('.simple-component');
-    let bar = find('.another-component');
-    let tooltip = findInspectorElement('tooltip');
-    let highlight = findInspectorElement('highlight');
+    hooks.beforeEach(async function (assert) {
+      await visit('/simple');
+      await getRenderTree();
 
-    assert.notOk(isVisible(tooltip), 'tooltip is not visible');
-    assert.notOk(isVisible(highlight), 'highlight is not visible');
+      foo = find('.simple-component');
+      bar = find('.another-component');
+      tooltip = findInspectorElement('tooltip');
+      highlight = findInspectorElement('highlight');
 
-    run(() => EmberDebug.port.trigger('view:inspectViews', { inspect: true }));
+      assert.ok(!isVisible(tooltip), 'tooltip is not visible');
+      assert.ok(!isVisible(highlight), 'highlight is not visible');
 
-    await triggerEvent('.simple-component', 'mousemove');
+      run(() =>
+        EmberDebug.port.trigger('view:inspectViews', { inspect: true })
+      );
+    });
 
-    assert.ok(isVisible(tooltip), 'tooltip is visible');
-    assert.dom('.ember-inspector-tooltip-header', tooltip).hasText('<TestFoo>');
-    assert
-      .dom('.ember-inspector-tooltip-detail-template', tooltip)
-      .hasText('my-app/templates/components/test-foo.hbs');
-    assert
-      .dom('.ember-inspector-tooltip-detail-instance', tooltip)
-      .hasText('App.TestFooComponent');
+    hooks.afterEach(function () {
+      foo = bar = inElement = tooltip = highlight = undefined;
+    });
 
-    let actual = highlight.getBoundingClientRect();
-    let expected = foo.getBoundingClientRect();
+    test('Highlighting Views on hover', async function (assert) {
+      await triggerEvent('.simple-component', 'mousemove');
 
-    assert.ok(isVisible(highlight), 'highlight is visible');
-    assert.strictEqual(actual.x, expected.x, 'same x as component');
-    assert.strictEqual(actual.y, expected.y, 'same y as component');
-    assert.strictEqual(actual.width, expected.width, 'same width as component');
-    assert.strictEqual(
-      actual.height,
-      expected.height,
-      'same height as component'
-    );
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<TestFoo>');
+      assert
+        .dom('.ember-inspector-tooltip-detail-template', tooltip)
+        .hasText('my-app/templates/components/test-foo.hbs');
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText('App.TestFooComponent');
 
-    await triggerEvent('.bar-inner', 'mousemove');
+      let actual = highlight.getBoundingClientRect();
+      let expected = foo.getBoundingClientRect();
 
-    assert.ok(isVisible(tooltip), 'tooltip is visible');
-    assert.dom('.ember-inspector-tooltip-header', tooltip).hasText('<TestBar>');
-    assert
-      .dom('.ember-inspector-tooltip-detail-template', tooltip)
-      .hasText('my-app/templates/components/test-bar.hbs');
-    assert
-      .dom('.ember-inspector-tooltip-detail-instance', tooltip)
-      .hasText(templateOnlyComponent ? '(unknown)' : 'App.TestBarComponent');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+      assert.strictEqual(actual.x, expected.x, 'same x as component');
+      assert.strictEqual(actual.y, expected.y, 'same y as component');
+      assert.strictEqual(
+        actual.width,
+        expected.width,
+        'same width as component'
+      );
+      assert.strictEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
 
-    actual = highlight.getBoundingClientRect();
-    expected = bar.getBoundingClientRect();
+      await triggerEvent('.bar-inner', 'mousemove');
 
-    assert.ok(isVisible(highlight), 'highlight is visible');
-    assert.strictEqual(actual.x, expected.x, 'same x as component');
-    assert.strictEqual(actual.y, expected.y, 'same y as component');
-    assert.strictEqual(actual.width, expected.width, 'same width as component');
-    assert.strictEqual(
-      actual.height,
-      expected.height,
-      'same height as component'
-    );
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<TestBar>');
+      assert
+        .dom('.ember-inspector-tooltip-detail-template', tooltip)
+        .hasText('my-app/templates/components/test-bar.hbs');
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText(
+          templateOnlyComponent
+            ? 'TemplateOnlyComponent'
+            : 'App.TestBarComponent'
+        );
 
-    await triggerEvent(document.body, 'mousemove');
+      actual = highlight.getBoundingClientRect();
+      expected = bar.getBoundingClientRect();
 
-    assert.notOk(isVisible(tooltip), 'tooltip is not visible');
-    assert.notOk(isVisible(highlight), 'highlight is not visible');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+      assert.strictEqual(actual.x, expected.x, 'same x as component');
+      assert.strictEqual(actual.y, expected.y, 'same y as component');
+      assert.strictEqual(
+        actual.width,
+        expected.width,
+        'same width as component'
+      );
+      assert.strictEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
 
-    // Pin tooltip and stop inspecting
-    await click('.simple-component');
-    await triggerEvent('.bar-inner', 'mousemove');
+      await triggerEvent(document.body, 'mousemove');
 
-    assert.ok(isVisible(tooltip), 'tooltip is visible');
-    assert.dom('.ember-inspector-tooltip-header', tooltip).hasText('<TestFoo>');
-    assert
-      .dom('.ember-inspector-tooltip-detail-template', tooltip)
-      .hasText('my-app/templates/components/test-foo.hbs');
-    assert
-      .dom('.ember-inspector-tooltip-detail-instance', tooltip)
-      .hasText('App.TestFooComponent');
+      assert.notOk(isVisible(tooltip), 'tooltip is not visible');
+      assert.notOk(isVisible(highlight), 'highlight is not visible');
 
-    actual = highlight.getBoundingClientRect();
-    expected = foo.getBoundingClientRect();
+      // Pin tooltip and stop inspecting
+      await click('.simple-component');
+      await triggerEvent('.bar-inner', 'mousemove');
 
-    assert.ok(isVisible(highlight), 'highlight is visible');
-    assert.strictEqual(actual.x, expected.x, 'same x as component');
-    assert.strictEqual(actual.y, expected.y, 'same y as component');
-    assert.strictEqual(actual.width, expected.width, 'same width as component');
-    assert.strictEqual(
-      actual.height,
-      expected.height,
-      'same height as component'
-    );
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<TestFoo>');
+      assert
+        .dom('.ember-inspector-tooltip-detail-template', tooltip)
+        .hasText('my-app/templates/components/test-foo.hbs');
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText('App.TestFooComponent');
 
-    assert.ok(isVisible(tooltip), 'tooltip is visible');
-    assert.dom('.ember-inspector-tooltip-header', tooltip).hasText('<TestFoo>');
-    assert
-      .dom('.ember-inspector-tooltip-detail-template', tooltip)
-      .hasText('my-app/templates/components/test-foo.hbs');
-    assert
-      .dom('.ember-inspector-tooltip-detail-instance', tooltip)
-      .hasText('App.TestFooComponent');
+      actual = highlight.getBoundingClientRect();
+      expected = foo.getBoundingClientRect();
 
-    await triggerEvent(this.element, 'mousemove');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+      assert.deepEqual(actual.x, expected.x, 'same x as component');
+      assert.deepEqual(actual.y, expected.y, 'same y as component');
+      assert.deepEqual(actual.width, expected.width, 'same width as component');
+      assert.deepEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
 
-    assert.ok(isVisible(tooltip), 'tooltip is pinned');
-    assert.ok(isVisible(highlight), 'highlight is pinned');
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<TestFoo>');
+      assert
+        .dom('.ember-inspector-tooltip-detail-template', tooltip)
+        .hasText('my-app/templates/components/test-foo.hbs');
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText('App.TestFooComponent');
 
-    // TODO support clicking on the instance to open object inspector
+      await triggerEvent(this.element, 'mousemove');
 
-    // Dismiss tooltip
-    await click(this.element);
+      assert.ok(isVisible(tooltip), 'tooltip is pinned');
+      assert.ok(isVisible(highlight), 'highlight is pinned');
 
-    assert.notOk(isVisible(tooltip), 'tooltip is not visible');
-    assert.notOk(isVisible(highlight), 'highlight is not visible');
+      // Dismiss tooltip
+      await click(this.element);
 
-    await triggerEvent('.bar-inner', 'mousemove');
+      assert.notOk(isVisible(tooltip), 'tooltip is not visible');
+      assert.notOk(isVisible(highlight), 'highlight is not visible');
 
-    assert.notOk(isVisible(tooltip), 'tooltip is not visible');
-    assert.notOk(isVisible(highlight), 'highlight is not visible');
+      await triggerEvent('.bar-inner', 'mousemove');
+
+      assert.notOk(isVisible(tooltip), 'tooltip is not visible');
+      assert.notOk(isVisible(highlight), 'highlight is not visible');
+    });
+
+    test('in-element inside component', async function (assert) {
+      await visit('test-in-element-in-component');
+      await rerender();
+      await getRenderTree();
+
+      inElement = find('.test-in-element-in-component');
+
+      await click('.test-in-element-in-component');
+
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<InElement>');
+
+      let actual = highlight.getBoundingClientRect();
+      let expected = inElement.getBoundingClientRect();
+
+      // await this.pauseTest();
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+
+      assert.deepEqual(actual.x, expected.x, 'same x as component');
+      assert.deepEqual(actual.y, expected.y, 'same y as component');
+      assert.deepEqual(actual.width, expected.width, 'same width as component');
+      assert.deepEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
+
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText('InElement');
+    });
+
+    test('component inside in-element', async function (assert) {
+      await visit('test-component-in-in-element');
+      await rerender();
+      await getRenderTree();
+
+      inElement = find('.test-component-in-in-element');
+
+      await click('.test-component-in-in-element');
+
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<TestComponentInInElement>');
+
+      let actual = highlight.getBoundingClientRect();
+      let expected = inElement.getBoundingClientRect();
+
+      // await this.pauseTest();
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+
+      assert.deepEqual(actual.x, expected.x, 'same x as component');
+      assert.deepEqual(actual.y, expected.y, 'same y as component');
+      assert.deepEqual(actual.width, expected.width, 'same width as component');
+      assert.deepEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
+
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText('App.TestComponentInElement');
+    });
+
+    test('wormhole', async function (assert) {
+      await visit('wormhole');
+      await rerender();
+      await getRenderTree();
+
+      inElement = find('.in-wormhole');
+
+      await click('.in-wormhole');
+
+      assert
+        .dom('.ember-inspector-tooltip-header', tooltip)
+        .hasText('<EmberWormhole>');
+
+      let actual = highlight.getBoundingClientRect();
+      let expected = inElement.getBoundingClientRect();
+
+      // await this.pauseTest();
+      assert.ok(isVisible(tooltip), 'tooltip is visible');
+      assert.ok(isVisible(highlight), 'highlight is visible');
+
+      assert.deepEqual(actual.x, expected.x, 'same x as component');
+      assert.deepEqual(actual.y, expected.y, 'same y as component');
+      assert.deepEqual(actual.width, expected.width, 'same width as component');
+      assert.deepEqual(
+        actual.height,
+        expected.height,
+        'same height as component'
+      );
+
+      assert
+        .dom('.ember-inspector-tooltip-detail-instance', tooltip)
+        .hasText(/ember-wormhole/);
+    });
   });
 });

@@ -6977,6 +6977,14 @@ ember-try@^2.0.0:
     rimraf "^3.0.2"
     walk-sync "^2.2.0"
 
+ember-wormhole@^0.6.0:
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/ember-wormhole/-/ember-wormhole-0.6.0.tgz#1f9143aa05c0f0abdf14a97ff22520ebaf85eca0"
+  integrity sha512-b7RrRxkwCBEJxM2zR34dEzIET81BOZWTcYNJtkidLycLQvdbxPys5QJEjJ/IfDikT/z5HuQBdZRKBhXI0vZNXQ==
+  dependencies:
+    ember-cli-babel "^7.22.1"
+    ember-cli-htmlbars "^5.3.1"
+
 emoji-regex@^7.0.1:
   version "7.0.3"
   resolved "https://registry.yarnpkg.com/emoji-regex/-/emoji-regex-7.0.3.tgz#933a04052860c85e83c122479c4748a8e4c72156"
