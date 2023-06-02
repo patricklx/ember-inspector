@@ -25,7 +25,6 @@ export default class RenderTree {
       // not supported
     }
 
-
     // need to have different ids per application / iframe
     // to distinguish the render nodes it in the inspector
     // between apps
@@ -162,7 +161,7 @@ export default class RenderTree {
 
   resetInElementSupport() {
     if (!this.orginalFunctions) {
-      return
+      return;
     }
     this.debugRenderTree.exit = this.orginalFunctions.exit;
     this.debugRenderTree.enter = this.orginalFunctions.enter;
