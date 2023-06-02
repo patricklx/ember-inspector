@@ -29,13 +29,6 @@ try {
   // eslint-disable-next-line no-empty
 } catch (e) {}
 
-// TODO make the debounce configurable for tests
-async function timeout(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 // TODO switch to an adapter architecture, similar to the acceptance tests
 async function captureMessage(type, callback) {
   if (!EmberDebug.port) {
