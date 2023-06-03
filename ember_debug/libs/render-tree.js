@@ -1,6 +1,5 @@
 import captureRenderTree from './capture-render-tree';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
-import { registerDestructor } from '@ember/destroyable';
 
 export default class RenderTree {
   /**
@@ -32,8 +31,8 @@ export default class RenderTree {
   }
 
   setupInElementSupport(owner) {
-    // eslint-disable-next-line no-undef
-    const { NewElementBuilder } = requirejs('@glimmer/runtime');
+    const { NewElementBuilder, registerDestructor } =
+      window.require('@glimmer/runtime');
     let Wormhole = null;
     try {
       // eslint-disable-next-line no-undef
