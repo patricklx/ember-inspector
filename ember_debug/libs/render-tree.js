@@ -1,5 +1,6 @@
 import captureRenderTree from './capture-render-tree';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
+import { A } from 'ember-debug/utils/ember/array';
 
 export default class RenderTree {
   /**
@@ -16,7 +17,7 @@ export default class RenderTree {
     this.releaseObject = releaseObject;
     this.inspectNode = inspectNode;
     this.nodeMap = new Map();
-    this.remoteRoots = [];
+    this.remoteRoots = A([]);
     this._reset();
     try {
       this.setupInElementSupport(owner);
@@ -33,10 +34,13 @@ export default class RenderTree {
   setupInElementSupport(owner) {
     const { NewElementBuilder, registerDestructor } =
       window.require('@glimmer/runtime');
+    let Destroy = null;
+    if (!registerDestructor) {
+      Destroy = window.require('@glimmer/util').DESTROY;
+    }
     let Wormhole = null;
     try {
-      // eslint-disable-next-line no-undef
-      Wormhole = requirejs('ember-wormhole/components/ember-wormhole');
+      Wormhole = window.require('ember-wormhole/components/ember-wormhole');
     } catch (e) {
       Wormhole = null;
     }
@@ -134,16 +138,24 @@ export default class RenderTree {
     NewElementBuilder.prototype.pushRemoteElement = function (node) {
       const obj = buildInElementNode(node);
       if (currentNode) {
-        currentNode.remotes = currentNode.remotes || [];
+        currentNode.remotes = currentNode.remotes || A([]);
         currentNode.remotes.push(obj);
       }
       renderTree.remoteRoots.push(obj);
       const currNode = currentNode;
       const block = pushRemoteElement.call(this, node);
-      registerDestructor(block, () => {
+      registerDestructor?.(block, () => {
         renderTree.remoteRoots.removeObject(obj);
         currNode.remotes.removeObject(obj);
       });
+      if (Destroy) {
+        const destructor = block[Destroy];
+        block[Destroy] = function (...args) {
+          destructor.call(this, ...args);
+          renderTree.remoteRoots.removeObject(obj);
+          currNode.remotes.removeObject(obj);
+        };
+      }
       currentNode = obj;
       return block;
     };
