@@ -444,8 +444,8 @@ module('Ember Debug - View', function (hooks) {
     this.owner.register(
       'component:test-in-element-in-component',
       EmberComponent.extend({
-        constructor(owner, args) {
-          super(owner, args);
+        init(...args) {
+          this._super(...args);
           this.element = document.querySelector('#target');
         },
         toString() {
