@@ -641,7 +641,6 @@ module('Ember Debug - View', function (hooks) {
             Component(
               {
                 name: 'test-in-element-in-component',
-                bounds: 'range',
                 template: /.*/,
               },
               Component({
@@ -702,7 +701,6 @@ module('Ember Debug - View', function (hooks) {
             Component(
               {
                 name: 'test-in-element-in-component',
-                bounds: 'range',
                 template: /.*/,
               },
               Component({
