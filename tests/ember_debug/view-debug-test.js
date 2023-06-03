@@ -243,7 +243,8 @@ function Component(
   },
   ...children
 ) {
-  return RenderNode({ name, instance, template, bounds, ...options, type: 'component' },
+  return RenderNode(
+    { name, instance, template, bounds, ...options, type: 'component' },
     ...children
   );
 }
@@ -258,8 +259,10 @@ function Route(
   },
   ...children
 ) {
-  return RenderNode({ type: 'outlet', name: 'main', instance: undefined, template: null },
-    RenderNode({ name, args, instance, template, ...options, type: 'route-template' },
+  return RenderNode(
+    { type: 'outlet', name: 'main', instance: undefined, template: null },
+    RenderNode(
+      { name, args, instance, template, ...options, type: 'route-template' },
       ...children
     )
   );
@@ -287,7 +290,7 @@ function findInspectorElement(kind) {
   throw new Error(`Cannot find ${kind} inspector element`);
 }
 
-module('Ember Debug - View', function(hooks) {
+module('Ember Debug - View', function (hooks) {
   setupEmberDebugTest(hooks, {
     routes() {
       this.route('simple');
@@ -295,12 +298,12 @@ module('Ember Debug - View', function(hooks) {
       this.route('test-component-in-in-element');
       this.route('wormhole');
       this.route('inputs');
-      this.route('comments', { resetNamespace: true }, function() {});
+      this.route('comments', { resetNamespace: true }, function () {});
       this.route('posts', { resetNamespace: true });
     },
   });
 
-  hooks.beforeEach(async function() {
+  hooks.beforeEach(async function () {
     EmberDebug.IGNORE_DEPRECATIONS = true;
 
     this.owner.register(
@@ -430,12 +433,12 @@ module('Ember Debug - View', function(hooks) {
     this.owner.register(
       'component:test-bar',
       templateOnlyComponent?.() ||
-      EmberComponent.extend({
-        tagName: '',
-        toString() {
-          return 'App.TestBarComponent';
-        },
-      })
+        EmberComponent.extend({
+          tagName: '',
+          toString() {
+            return 'App.TestBarComponent';
+          },
+        })
     );
 
     this.owner.register(
@@ -447,7 +450,7 @@ module('Ember Debug - View', function(hooks) {
         },
         toString() {
           return 'App.TestInElementInComponent';
-        }
+        },
       })
     );
 
@@ -456,7 +459,7 @@ module('Ember Debug - View', function(hooks) {
       EmberComponent.extend({
         toString() {
           return 'App.TestComponentInElement';
-        }
+        },
       })
     );
 
@@ -471,7 +474,8 @@ module('Ember Debug - View', function(hooks) {
         `<div class="application" style="line-height: normal;">
           <div id="target"></div>
           {{outlet}}
-        </div>`, { moduleName: 'my-app/templates/application.hbs' }
+        </div>`,
+        { moduleName: 'my-app/templates/application.hbs' }
       )
     );
 
@@ -540,7 +544,8 @@ module('Ember Debug - View', function(hooks) {
           <span>test</span>
           <span class="bar-inner">bar</span>
         </div>
-        <!-- after -->`, { moduleName: 'my-app/templates/components/test-bar.hbs' }
+        <!-- after -->`,
+        { moduleName: 'my-app/templates/components/test-bar.hbs' }
       )
     );
 
@@ -551,7 +556,7 @@ module('Ember Debug - View', function(hooks) {
               App.TestComponentInElement
             </p>
         `)
-    )
+    );
 
     this.owner.register(
       'template:components/test-in-element-in-component',
@@ -561,11 +566,11 @@ module('Ember Debug - View', function(hooks) {
                     App.TestInElementInComponent
                   </p>
                 {{/in-element}}
-              `),
-    )
+              `)
+    );
   });
 
-  test('Simple Inputs Tree', async function() {
+  test('Simple Inputs Tree', async function () {
     await visit('/inputs');
 
     let tree = await getRenderTree();
@@ -584,8 +589,10 @@ module('Ember Debug - View', function(hooks) {
 
     matchTree(tree, [
       TopLevel(
-        Route({ name: 'application' },
-          Route({ name: 'inputs' },
+        Route(
+          { name: 'application' },
+          Route(
+            { name: 'inputs' },
             Component(
               {
                 name: 'input',
@@ -601,7 +608,7 @@ module('Ember Debug - View', function(hooks) {
     ]);
   });
 
-  test('Simple View Tree', async function() {
+  test('Simple View Tree', async function () {
     await visit('/simple');
 
     let tree = await getRenderTree();
@@ -610,8 +617,10 @@ module('Ember Debug - View', function(hooks) {
 
     matchTree(tree, [
       TopLevel(
-        Route({ name: 'application' },
-          Route({ name: 'simple' },
+        Route(
+          { name: 'application' },
+          Route(
+            { name: 'simple' },
             Component({ name: 'test-foo', bounds: 'single' }),
             Component({
               name: 'test-bar',
@@ -652,7 +661,7 @@ module('Ember Debug - View', function(hooks) {
     await argsTestPromise;
   });
 
-  test("Supports applications that don't have the ember-application CSS class", async function(assert) {
+  test("Supports applications that don't have the ember-application CSS class", async function (assert) {
     await visit('/simple');
 
     assert
@@ -680,8 +689,10 @@ module('Ember Debug - View', function(hooks) {
 
     matchTree(tree, [
       TopLevel(
-        Route({ name: 'application' },
-          Route({ name: 'simple' },
+        Route(
+          { name: 'application' },
+          Route(
+            { name: 'simple' },
             Component({ name: 'test-foo', bounds: 'single' }),
             Component({
               name: 'test-bar',
@@ -706,7 +717,7 @@ module('Ember Debug - View', function(hooks) {
     ]);
   });
 
-  test('Does not list nested {{yield}} views', async function() {
+  test('Does not list nested {{yield}} views', async function () {
     this.owner.register('component:x-first', EmberComponent.extend());
     this.owner.register('component:x-second', EmberComponent.extend());
 
@@ -735,8 +746,10 @@ module('Ember Debug - View', function(hooks) {
 
     matchTree(tree, [
       TopLevel(
-        Route({ name: 'application' },
-          Route({ name: 'posts' },
+        Route(
+          { name: 'application' },
+          Route(
+            { name: 'posts' },
             Component({ name: 'x-first' }, Component({ name: 'x-second' }))
           )
         )
@@ -744,14 +757,14 @@ module('Ember Debug - View', function(hooks) {
     ]);
   });
 
-  module('Highlighting Views on hover', function(hooks) {
+  module('Highlighting Views on hover', function (hooks) {
     let foo;
     let bar;
     let inElement;
     let tooltip;
     let highlight;
 
-    hooks.beforeEach(async function(assert) {
+    hooks.beforeEach(async function (assert) {
       await visit('/simple');
       await getRenderTree();
 
@@ -768,11 +781,11 @@ module('Ember Debug - View', function(hooks) {
       );
     });
 
-    hooks.afterEach(function() {
+    hooks.afterEach(function () {
       foo = bar = inElement = tooltip = highlight = undefined;
     });
 
-    test('Highlighting Views on hover', async function(assert) {
+    test('Highlighting Views on hover', async function (assert) {
       await triggerEvent('.simple-component', 'mousemove');
 
       assert.ok(isVisible(tooltip), 'tooltip is visible');
@@ -815,9 +828,9 @@ module('Ember Debug - View', function(hooks) {
       assert
         .dom('.ember-inspector-tooltip-detail-instance', tooltip)
         .hasText(
-          templateOnlyComponent ?
-          'TemplateOnlyComponent' :
-          'App.TestBarComponent'
+          templateOnlyComponent
+            ? 'TemplateOnlyComponent'
+            : 'App.TestBarComponent'
         );
 
       actual = highlight.getBoundingClientRect();
@@ -898,7 +911,7 @@ module('Ember Debug - View', function(hooks) {
       assert.notOk(isVisible(highlight), 'highlight is not visible');
     });
 
-    test('in-element inside component', async function(assert) {
+    test('in-element inside component', async function (assert) {
       await visit('test-in-element-in-component');
       await rerender();
       await getRenderTree();
@@ -932,7 +945,7 @@ module('Ember Debug - View', function(hooks) {
         .hasText('InElement');
     });
 
-    test('component inside in-element', async function(assert) {
+    test('component inside in-element', async function (assert) {
       await visit('test-component-in-in-element');
       await rerender();
       await getRenderTree();
@@ -966,7 +979,7 @@ module('Ember Debug - View', function(hooks) {
         .hasText('App.TestComponentInElement');
     });
 
-    test('wormhole', async function(assert) {
+    test('wormhole', async function (assert) {
       await visit('wormhole');
       await rerender();
       await getRenderTree();
