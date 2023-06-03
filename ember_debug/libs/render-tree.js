@@ -22,7 +22,7 @@ export default class RenderTree {
     try {
       this.setupInElementSupport(owner);
     } catch (e) {
-      // not supported
+      console.error(e);
     }
 
     // need to have different ids per application / iframe
