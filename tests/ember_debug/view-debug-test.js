@@ -446,7 +446,7 @@ module('Ember Debug - View', function (hooks) {
       EmberComponent.extend({
         init(...args) {
           this._super(...args);
-          this.element = document.querySelector('#target');
+          this.elementTarget = document.querySelector('#target');
         },
         toString() {
           return 'App.TestInElementInComponent';
@@ -561,7 +561,7 @@ module('Ember Debug - View', function (hooks) {
     this.owner.register(
       'template:components/test-in-element-in-component',
       hbs(`
-                {{#in-element this.element}}
+                {{#in-element this.elementTarget}}
                   <p class='test-in-element-in-component'>
                     App.TestInElementInComponent
                   </p>
