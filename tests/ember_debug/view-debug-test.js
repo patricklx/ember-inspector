@@ -653,7 +653,7 @@ module('Ember Debug - View', function (hooks) {
             Component(
               {
                 name: 'test-in-element-in-component',
-                template: /.*/,
+                template: () => null,
               },
               Component({
                 name: 'in-element',
@@ -713,7 +713,7 @@ module('Ember Debug - View', function (hooks) {
             Component(
               {
                 name: 'test-in-element-in-component',
-                template: /.*/,
+                template: () => null,
               },
               Component({
                 name: 'in-element',
