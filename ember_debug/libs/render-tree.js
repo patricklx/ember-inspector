@@ -1,6 +1,7 @@
 import captureRenderTree from './capture-render-tree';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
 import { A } from 'ember-debug/utils/ember/array';
+import Ember from 'ember-debug/utils/ember';
 
 export default class RenderTree {
   /**
@@ -22,7 +23,7 @@ export default class RenderTree {
     try {
       this.setupInElementSupport(owner);
     } catch (e) {
-      throw e;
+      // not supported
     }
 
     // need to have different ids per application / iframe
@@ -32,15 +33,20 @@ export default class RenderTree {
   }
 
   setupInElementSupport(owner) {
-    const { NewElementBuilder, registerDestructor } =
-      window.require('@glimmer/runtime');
+    const runtime = requireModule.has('@glimmer/runtime')
+      ? requireModule('@glimmer/runtime')
+      : Ember.__loader.require('@glimmer/runtime');
+    const { NewElementBuilder, registerDestructor } = runtime;
     let Destroy = null;
     if (!registerDestructor) {
-      Destroy = window.require('@glimmer/util').DESTROY;
+      const glimmerUtil = requireModule.has('@glimmer/util')
+        ? requireModule('@glimmer/util')
+        : Ember.__loader.require('@glimmer/util');
+      Destroy = glimmerUtil.DESTROY;
     }
     let Wormhole = null;
     try {
-      Wormhole = window.require('ember-wormhole/components/ember-wormhole');
+      Wormhole = requireModule('ember-wormhole/components/ember-wormhole');
     } catch (e) {
       Wormhole = null;
     }
@@ -48,7 +54,9 @@ export default class RenderTree {
     let currentNode = null;
     const nodeStack = [];
     const renderTree = this;
-    const renderer = owner.lookup('renderer:-dom').debugRenderTree;
+    const renderer =
+      owner.lookup('renderer:-dom')?.debugRenderTree ||
+      owner.lookup('service:-glimmer-environment')._debugRenderTree;
     this.debugRenderTree = renderer;
     const captureNode = this.debugRenderTree.captureNode;
     const enter = renderer.enter;
@@ -179,7 +187,10 @@ export default class RenderTree {
     this.debugRenderTree.captureNode = this.orginalFunctions.captureNode;
 
     // eslint-disable-next-line no-undef
-    const { NewElementBuilder } = requirejs('@glimmer/runtime');
+    const runtime = requireModule.has('@glimmer/runtime')
+      ? requireModule('@glimmer/runtime')
+      : Ember.__loader.require('@glimmer/runtime');
+    const { NewElementBuilder } = runtime;
     NewElementBuilder.prototype.pushElement = this.orginalFunctions.pushElement;
     NewElementBuilder.prototype.pushRemoteElement =
       this.orginalFunctions.pushRemoteElement;
