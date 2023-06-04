@@ -223,12 +223,12 @@ function RenderNode(
 ) {
   return (actual) => {
     match(actual.id, id);
-    match(actual.type, type, 'should have correct type');
-    match(actual.name, name, 'should have correct name');
+    match(actual.type, type, `component ${name} should have correct type`);
+    match(actual.name, name, `component ${name} should have correct name`);
     match(actual.args, args);
-    match(actual.instance, instance, 'should have correct instance');
-    match(actual.template, template, 'should have correct template');
-    match(actual.bounds, bounds, 'should have correct bounds');
+    match(actual.instance, instance, `component ${name} should have correct instance`);
+    match(actual.template, template, 'component ${name} should have correct template`);
+    match(actual.bounds, bounds, `component ${name} should have correct bounds`);
     matchTree(actual.children, children);
   };
 }
