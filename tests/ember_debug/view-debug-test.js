@@ -226,7 +226,8 @@ function RenderNode(
     match(actual.type, type, `component ${name} should have correct type`);
     match(actual.name, name, `component ${name} should have correct name`);
     match(actual.args, args);
-    match(actual.instance,
+    match(
+      actual.instance,
       instance,
       `component ${name} should have correct instance`
     );
