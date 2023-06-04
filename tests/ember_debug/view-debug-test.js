@@ -108,7 +108,7 @@ function match(actual, matcher, message) {
       matcher.indexOf(actual) > -1,
       `${actual} should be one of ${matcher.join('/')}`
     );
-  } else if (matcher instanceof RegExp) {
+  } else if (matcher instanceof RegExp && actual !== null) {
     QUnit.assert.ok(actual.match(matcher), `${actual} should match ${matcher}`);
   } else if (matcher !== null && typeof matcher === 'object') {
     QUnit.assert.deepEqual(actual, matcher, message);
