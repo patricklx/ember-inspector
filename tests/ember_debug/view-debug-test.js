@@ -226,9 +226,9 @@ function RenderNode(
     match(actual.type, type, 'should have correct type');
     match(actual.name, name, 'should have correct name');
     match(actual.args, args);
-    match(actual.instance, instance);
-    match(actual.template, template);
-    match(actual.bounds, bounds);
+    match(actual.instance, instance, 'should have correct instance');
+    match(actual.template, template, 'should have correct template');
+    match(actual.bounds, bounds, 'should have correct bounds');
     matchTree(actual.children, children);
   };
 }
