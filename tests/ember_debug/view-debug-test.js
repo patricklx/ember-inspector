@@ -227,7 +227,7 @@ function RenderNode(
     match(actual.name, name, `component ${name} should have correct name`);
     match(actual.args, args);
     match(actual.instance, instance, `component ${name} should have correct instance`);
-    match(actual.template, template, 'component ${name} should have correct template`);
+    match(actual.template, template, `component ${name} should have correct template`);
     match(actual.bounds, bounds, `component ${name} should have correct bounds`);
     matchTree(actual.children, children);
   };
