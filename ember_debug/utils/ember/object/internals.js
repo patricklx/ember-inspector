@@ -1,9 +1,10 @@
 import Ember from '../../ember';
+import { emberSafeRequire } from '../loader';
 
 let module;
 
 try {
-  module = requireModule('@ember/object/internals');
+  module = emberSafeRequire('@ember/object/internals');
 } catch {
   module = Ember;
 }

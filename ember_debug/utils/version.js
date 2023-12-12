@@ -8,7 +8,7 @@
  *
  * @param {String} version1
  * @param {String} version2
- * @return {Boolean} result of the comparison
+ * @return {Number} result of the comparison
  */
 export function compareVersion(version1, version2) {
   let compared, i;

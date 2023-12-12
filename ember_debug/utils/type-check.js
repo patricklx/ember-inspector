@@ -1,6 +1,9 @@
 import Debug from 'ember-debug/utils/ember/debug';
-import { ComputedProperty, meta as emberMeta } from 'ember-debug/utils/ember';
-import { emberSafeRequire } from 'ember-debug/utils/ember/loader';
+import {
+  ComputedProperty,
+  meta as emberMeta,
+  debug,
+} from 'ember-debug/utils/ember';
 
 /**
  * Check if given key on the passed object is a computed property
@@ -44,11 +47,9 @@ export function getDescriptorFor(object, key) {
 
   // exists longeer than ember 3.10
   if (Debug.isComputed) {
-    const { descriptorForDecorator, descriptorForProperty } =
-      emberSafeRequire('@ember/-internals/metal') || {};
     return (
-      descriptorForDecorator?.(object[key]) ||
-      descriptorForProperty?.(object, key)
+      debug.descriptorForDecorator?.(object[key]) ||
+      debug.descriptorForProperty?.(object, key)
     );
   }
 

@@ -105,7 +105,11 @@ var EMBER_VERSIONS_SUPPORTED = {{EMBER_VERSIONS_SUPPORTED}};
 
   function onEmberReady(callback) {
     var triggered = false;
-    var triggerOnce = function(string) {
+    /**
+     *
+     * @param event {CustomEvent}
+     */
+    var triggerOnce = function(event) {
       if (triggered) {
         return;
       }
@@ -115,6 +119,14 @@ var EMBER_VERSIONS_SUPPORTED = {{EMBER_VERSIONS_SUPPORTED}};
           Ember = requireModule('ember')['default'];
         } catch {
           Ember = window.Ember;
+        }
+
+        if (event && event.detail) {
+          Ember = {...event.detail};
+          Ember.guidFor = event.detail.object.guidFor;
+          Ember.Application = event.detail.classes.Application;
+          triggered = true;
+          callback();
         }
       }
 
@@ -132,10 +144,13 @@ var EMBER_VERSIONS_SUPPORTED = {{EMBER_VERSIONS_SUPPORTED}};
 
     // Newest Ember versions >= 1.10
 
-    const later = () => setTimeout(triggerOnce, 0);
+    const later = (event) => setTimeout(() => triggerOnce(event), 0);
     window.addEventListener('Ember', later, { once: true });
+    window.addEventListener('ember-inspector-debug-response', later, { once: true });
     // Oldest Ember versions or if this was injected after Ember has loaded.
     onReady(triggerOnce);
+    const event = new Event('ember-inspector-debug-request');
+    window.dispatchEvent(event);
   }
 
   // There's probably a better way
@@ -234,7 +249,7 @@ var EMBER_VERSIONS_SUPPORTED = {{EMBER_VERSIONS_SUPPORTED}};
    * @return {*}
    */
   function getApplications() {
-    var namespaces = Ember.A(Ember.Namespace.NAMESPACES);
+    var namespaces = [...Ember.Namespace.NAMESPACES];
 
     var apps = namespaces.filter(function(namespace) {
       return namespace instanceof Ember.Application;

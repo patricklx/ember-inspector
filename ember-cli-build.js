@@ -202,9 +202,14 @@ module.exports = function (defaults) {
        *
        *       this will throw an exception in the consuming project
        */
-      if (window.Ember) return resolve();
+       try {
+        if (window.Ember) return resolve();
+       } catch (e) {}
 
       window.addEventListener('Ember', resolve, { once: true });
+      window.addEventListener('ember-inspector-debug-response', resolve, { once: true });
+      const event = new Event('ember-inspector-debug-request');
+      window.dispatchEvent(event);
     });
     waitForEmberLoad.then(() => ${content});
   })()
