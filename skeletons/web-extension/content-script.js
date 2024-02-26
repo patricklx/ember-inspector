@@ -24,7 +24,6 @@
    *     https://developer.mozilla.org/en-US/docs/Web/API/Channel_Messaging_API
    */
   window.addEventListener('message', function(event) {
-    console.log('message', event);
     // received initial message from EmberDebug
     if (event.data === 'debugger-client') {
       var emberDebugPort = event.ports[0];
@@ -41,13 +40,11 @@
   function listenToEmberDebugPort(emberDebugPort) {
     // listen for messages from EmberDebug, and pass them on to the background script
     emberDebugPort.addEventListener('message', function(event) {
-      console.log('message from emberDebugPort', event);
       chrome.runtime.sendMessage(event.data);
     });
 
     // listen for messages from the EmberInspector, and pass them on to EmberDebug
     chrome.runtime.onMessage.addListener(function(message) {
-      console.log('message from EmberInspector', message);
       if (message.from === 'devtools') {
         console.log('message from EmberInspector sending to ember debug', message);
         // forward message to EmberDebug
