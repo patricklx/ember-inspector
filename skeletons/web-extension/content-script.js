@@ -46,7 +46,6 @@
     // listen for messages from the EmberInspector, and pass them on to EmberDebug
     chrome.runtime.onMessage.addListener(function(message) {
       if (message.from === 'devtools') {
-        console.log('message from EmberInspector sending to ember debug', message);
         // forward message to EmberDebug
         emberDebugPort.postMessage(message);
       }
