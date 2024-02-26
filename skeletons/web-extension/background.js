@@ -140,9 +140,6 @@
      * @param {Message} message
      */
     emberInspectorChromePort.onMessage.addListener(function(message) {
-      console.log('received message', message);
-      console.log('appId', appId);
-
       // if the message contains the appId, this is the first
       // message and the appId is used to map the port for this app.
       if (message.appId) {
@@ -151,11 +148,9 @@
         emberInspectorChromePorts[appId] = emberInspectorChromePort;
 
         emberInspectorChromePort.onDisconnect.addListener(function() {
-          console.log('emberInspectorChromePort disconnected', appId);
           delete emberInspectorChromePorts[appId];
         });
       } else if (message.from === 'devtools') {
-        console.log('sending to content script', message.tabId, message, { frameId: message.frameId });
         // all other messages from EmberInspector are forwarded to the content-script
         // https://developer.chrome.com/extensions/tabs#method-sendMessage
         chrome.tabs.sendMessage(message.tabId || appId, message, { frameId: message.frameId });
@@ -170,7 +165,6 @@
    * @param {MessageSender} sender
    */
   chrome.runtime.onMessage.addListener(function(request, sender) {
-    console.log('message from content script', request, sender);
     // only listen to messages from the content-script
     if (!sender.tab) {
       // noop
@@ -187,7 +181,6 @@
       updateContextMenu(true);
     } else {
       // forward the message to EmberInspector
-      console.log('to EmberInspector', request, sender);
       var emberInspectorChromePort = emberInspectorChromePorts[sender.tab.id];
       if (emberInspectorChromePort) { emberInspectorChromePort.postMessage(request); }
     }
