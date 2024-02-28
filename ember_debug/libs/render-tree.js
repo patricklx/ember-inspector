@@ -11,6 +11,7 @@ class InElementSupportProvider {
     this.remoteRoots = [];
     this.runtime = this.require('@glimmer/runtime');
     this.reference = this.require('@glimmer/reference');
+
     try {
       this.Wormhole = requireModule('ember-wormhole/components/ember-wormhole');
     } catch (e) {
@@ -27,6 +28,7 @@ class InElementSupportProvider {
       owner.lookup('renderer:-dom')?.debugRenderTree ||
       owner.lookup('service:-glimmer-environment')._debugRenderTree;
     this.NewElementBuilder = this.runtime.NewElementBuilder;
+    this.CustomHelperManager = requirejs('@glimmer/manager').CustomHelperManager;
 
     this.patch();
   }
@@ -43,6 +45,53 @@ class InElementSupportProvider {
     const componentStack = [];
 
     const enableModifierSupport = isInVersionSpecifier('>3.28.0', VERSION);
+
+    if (enableModifierSupport) {
+      const ref = this.reference.createUnboundRef();
+      const refProto = Object.getPrototypeOf(ref);
+      const valueForRef = this.reference.valueForRef;
+      Object.defineProperty(refProto, 'update', {
+        configurable: true,
+        enumerable: true,
+        set(v) {
+          this.__update = v;
+          if (v) {
+            valueForRef(this);
+          }
+        },
+        get() {
+          return this.__update;
+        }
+      });
+
+      const getHelper = this.CustomHelperManager.prototype.getHelper;
+      this.CustomHelperManager.prototype.getHelper = function (definition) {
+        const res = getHelper.call(this, definition);
+        return (capturedArgs, owner) => {
+          const h = res.call(this, capturedArgs, owner);
+          if (!self.debugRenderTree.stack.current) return h;
+
+          const state = {};
+          const manager = this.getDelegateFor(owner);
+          const name = manager.getDebugName?.(definition) || res.name || res.constructor?.name;
+          self.debugRenderTree?.create(state, {
+            type: 'helper',
+            name,
+            args: capturedArgs,
+            instance: definition,
+          });
+          self.debugRenderTree?.didRender(state, {
+            parentElement: () => null,
+            firstNode: () => null,
+            lastNode: () => null,
+          });
+          self.registerDestructor(h, () => {
+            self.debugRenderTree?.willDestroy(state);
+          });
+          return h;
+        }
+      }
+    }
 
     function createRef(value) {
       if (self.reference.createUnboundRef) {
@@ -400,7 +449,7 @@ export default class RenderTree {
   getBoundingClientRect(id) {
     let node = this.nodes[id];
 
-    if (!node || !node.bounds) {
+    if (!node || !node.bounds || !node.bounds.firstNode) {
       return null;
     }
 
@@ -438,7 +487,7 @@ export default class RenderTree {
     if (range === undefined) {
       let node = this.nodes[id];
 
-      if (node && node.bounds && isAttached(node.bounds)) {
+      if (node && node.bounds?.firstNode && isAttached(node.bounds)) {
         range = document.createRange();
         range.setStartBefore(node.bounds.firstNode);
         range.setEndAfter(node.bounds.lastNode);
@@ -462,7 +511,7 @@ export default class RenderTree {
   scrollIntoView(id) {
     let node = this.nodes[id];
 
-    if (!node || node.bounds === null) {
+    if (!node || !node.bounds?.firstNode) {
       return;
     }
 
@@ -487,7 +536,7 @@ export default class RenderTree {
   inspectElement(id) {
     let node = this.nodes[id];
 
-    if (!node || node.bounds === null) {
+    if (!node || !node.bounds?.firstNode) {
       return;
     }
 

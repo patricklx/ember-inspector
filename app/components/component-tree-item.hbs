@@ -26,7 +26,7 @@
         {{if @item.isClosingTag 'component-tree-item__closing'}}
         {{if @item.hasModifiers 'component-tree-item__has_modifier'}}
         {{if
-        (or @item.isComponent @item.isModifier @item.isHtmlTag)
+        (or @item.isComponent @item.isKeyword @item.isHtmlTag)
           (if
             @item.isCurlyInvocation
             "component-tree-item-classic__bracket"
@@ -39,7 +39,7 @@
         }}"
     >
       {{!-- template-lint-disable no-unbalanced-curlies --}}
-      {{#if (or @item.isComponent @item.isModifier)}}
+      {{#if (or @item.isComponent @item.isKeyword)}}
         {{#if @item.isCurlyInvocation}}
           <span class="component-name">
             {{@item.name}}

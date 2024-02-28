@@ -322,8 +322,8 @@ class RenderItem {
     );
   }
 
-  get isModifier() {
-    return this.renderNode.type === 'modifier';
+  get isKeyword() {
+    return this.renderNode.type === 'modifier' || this.renderNode.type === 'helper';
   }
 
   get hasModifiers() {
@@ -344,6 +344,10 @@ class RenderItem {
     return this.renderNode.type === 'placeholder-closing-tag';
   }
 
+  get canPreview() {
+    return this.renderNode.type !== 'placeholder-closing-tag' && this.renderNode.type !== 'helper';
+  }
+
   get name() {
     return this.renderNode.name;
   }
@@ -353,7 +357,7 @@ class RenderItem {
   }
 
   get isCurlyInvocation() {
-    if (this.isModifier) {
+    if (this.isKeyword) {
       return true;
     }
     return this.renderNode.args && this.renderNode.args.positional;
@@ -443,7 +447,7 @@ class RenderItem {
   }
 
   @action showPreview() {
-    if (this.isClosingTag) return;
+    if (!this.canPreview) return;
     this.controller.previewing = this.id;
   }
 
