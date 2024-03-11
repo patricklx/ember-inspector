@@ -68,9 +68,6 @@ class InElementSupportProvider {
       this.CustomHelperManager.prototype.getHelper = function (definition) {
         const res = getHelper.call(this, definition);
         return (capturedArgs, owner) => {
-          const h = res.call(this, capturedArgs, owner);
-          if (!self.debugRenderTree.stack.current) return h;
-
           const state = {};
           const manager = this.getDelegateFor(owner);
           const name = manager.getDebugName?.(definition) || res.name || res.constructor?.name;
@@ -80,6 +77,7 @@ class InElementSupportProvider {
             args: capturedArgs,
             instance: definition,
           });
+          const h = res.call(this, capturedArgs, owner);
           self.debugRenderTree?.didRender(state, {
             parentElement: () => null,
             firstNode: () => null,
@@ -282,6 +280,10 @@ class InElementSupportProvider {
       });
     };
 
+    this.helperFunctions = {
+      getHelper,
+    }
+
     this.debugRenderTreeFunctions = {
       appendChild,
       exit,
@@ -300,6 +302,7 @@ class InElementSupportProvider {
       return;
     }
     Object.assign(this.debugRenderTree, this.debugRenderTreeFunctions);
+    Object.assign(this.CustomHelperManager.prototype, this.helperFunctions);
     Object.assign(
       this.NewElementBuilder.prototype,
       this.NewElementBuilderFunctions
