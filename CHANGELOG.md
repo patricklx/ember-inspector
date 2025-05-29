@@ -1,5 +1,58 @@
 # Changelog
 
+## Release (2024-07-30)
+
+ember-inspector 4.13.1 (patch)
+
+#### :bug: Bug Fix
+* `ember-inspector`
+  * [#2595](https://github.com/emberjs/ember-inspector/pull/2595) fix boolean edit ([@patricklx](https://github.com/patricklx))
+
+#### Committers: 1
+- Patrick Pircher ([@patricklx](https://github.com/patricklx))
+
+## Release (2024-07-26)
+
+ember-inspector 4.13.0 (minor)
+
+#### :rocket: Enhancement
+* `ember-inspector`
+  * [#2581](https://github.com/emberjs/ember-inspector/pull/2581) provide name for hbs template only components ([@patricklx](https://github.com/patricklx))
+
+#### :house: Internal
+* `ember-inspector`
+  * [#2585](https://github.com/emberjs/ember-inspector/pull/2585) Use GH_PAT token to hopefully fix releases ([@patricklx](https://github.com/patricklx))
+
+#### Committers: 1
+- Patrick Pircher ([@patricklx](https://github.com/patricklx))
+
+## Release (2024-07-25)
+
+ember-inspector 4.12.2 (patch)
+
+#### :bug: Bug Fix
+* `ember-inspector`
+  * [#2587](https://github.com/emberjs/ember-inspector/pull/2587) do not use prototype extension ([@patricklx](https://github.com/patricklx))
+
+#### :house: Internal
+* `ember-inspector`
+  * [#2591](https://github.com/emberjs/ember-inspector/pull/2591) Use Personal Access Token ([@kategengler](https://github.com/kategengler))
+
+#### Committers: 2
+- Katie Gengler ([@kategengler](https://github.com/kategengler))
+- Patrick Pircher ([@patricklx](https://github.com/patricklx))
+
+## Release (2024-07-10)
+
+ember-inspector 4.12.1 (patch)
+
+#### :house: Internal
+* `ember-inspector`
+  * [#2582](https://github.com/emberjs/ember-inspector/pull/2582) skip failing test ([@patricklx](https://github.com/patricklx))
+
+#### Committers: 1
+- Patrick Pircher ([@patricklx](https://github.com/patricklx))
+
 ## Release (2024-05-06)
 
 ember-inspector 4.12.0 (minor)

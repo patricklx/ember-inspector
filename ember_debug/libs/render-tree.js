@@ -13,16 +13,16 @@ class InElementSupportProvider {
     this.reference = this.require('@glimmer/reference');
     try {
       this.Wormhole = requireModule('ember-wormhole/components/ember-wormhole');
-    } catch (e) {
+    } catch {
       // nope
     }
 
     try {
       requireModule(
-        '@glimmer/manager'
+        '@glimmer/manager',
       ).CustomModifierManager.prototype.getDebugInstance = (args) =>
         args.modifier || args.delegate;
-    } catch (e) {
+    } catch {
       // nope
     }
 
@@ -36,8 +36,6 @@ class InElementSupportProvider {
       owner.lookup('renderer:-dom')?.debugRenderTree ||
       owner.lookup('service:-glimmer-environment')._debugRenderTree;
     this.NewElementBuilder = this.runtime.NewElementBuilder;
-
-    this.patch();
   }
 
   reset() {
@@ -56,7 +54,7 @@ class InElementSupportProvider {
       !isInVersionSpecifier('>5.9.0', VERSION);
     const hasModifierAndInElementSupport = isInVersionSpecifier(
       '>5.9.0',
-      VERSION
+      VERSION,
     );
 
     function createRef(value) {
@@ -116,6 +114,9 @@ class InElementSupportProvider {
       return node;
     };
 
+    if (!NewElementBuilder) {
+      return;
+    }
     const didAppendNode = NewElementBuilder.prototype.didAppendNode;
     NewElementBuilder.prototype.didAppendNode = function (...args) {
       args[0].__emberInspectorParentNode = componentStack.at(-1);
@@ -151,7 +152,7 @@ class InElementSupportProvider {
             if (!name) {
               try {
                 name = modifier.manager?.getDebugName?.();
-              } catch (e) {
+              } catch {
                 // failed
               }
               name = name || 'unknown-modifier';
@@ -175,12 +176,12 @@ class InElementSupportProvider {
             if (!self.reference.createUnboundRef) {
               try {
                 named = modifierState?.args?.named?.constructor;
-              } catch (e) {
+              } catch {
                 //
               }
               try {
                 named = named || modifierState?.args?.named?.map;
-              } catch (e) {
+              } catch {
                 //
               }
             }
@@ -213,7 +214,7 @@ class InElementSupportProvider {
       NewElementBuilder.prototype.pushRemoteElement = function (
         element,
         guid,
-        insertBefore
+        insertBefore,
       ) {
         const ref = createRef(element);
         const capturedArgs = {
@@ -285,7 +286,7 @@ class InElementSupportProvider {
     Object.assign(this.debugRenderTree, this.debugRenderTreeFunctions);
     Object.assign(
       this.NewElementBuilder.prototype,
-      this.NewElementBuilderFunctions
+      this.NewElementBuilderFunctions,
     );
     this.NewElementBuilderFunctions = null;
   }
@@ -314,6 +315,7 @@ export default class RenderTree {
     this._reset();
     try {
       this.inElementSupport = new InElementSupportProvider(owner);
+      this.inElementSupport.patch();
     } catch (e) {
       console.error('failed to setup in element support');
       console.error(e);
@@ -412,7 +414,7 @@ export default class RenderTree {
 
     renderNode = this._matchRenderNodes(
       [...hints, ...remoteRoots, ...this.tree],
-      node
+      node,
     );
 
     if (renderNode) {
@@ -661,9 +663,18 @@ export default class RenderTree {
       }
 
       if (node.type === 'component' && !node.instance) {
+        if (
+          node.name === '(unknown template-only component)' &&
+          node.template?.endsWith('.hbs')
+        ) {
+          node.name = node.template
+            .split(/\\|\//)
+            .slice(-1)[0]
+            .slice(0, -'.hbs'.length);
+        }
         node.instance = this._createSimpleInstance(
           'TemplateOnlyComponent',
-          node.args.named
+          node.args.named,
         );
       }
 
@@ -794,8 +805,7 @@ export default class RenderTree {
     while (candidates.length > 0) {
       let candidate = candidates.shift();
       let range = this.getRange(candidate.id);
-      const isAllowed =
-        candidate.type !== 'modifier' && candidate.type !== 'html-element';
+      const isAllowed = candidate.type !== 'modifier';
 
       if (!isAllowed) {
         candidates.push(...candidate.children);

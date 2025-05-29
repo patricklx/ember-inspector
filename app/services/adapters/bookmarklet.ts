@@ -1,53 +1,46 @@
-/* eslint-disable no-useless-escape */
-import { computed } from '@ember/object';
-
 import BasicAdapter from './basic';
+import type { Message } from '../port';
 
 export default class Bookmarklet extends BasicAdapter {
   name = 'bookmarklet';
 
   /**
    * Called when the adapter is created.
-   *
-   * @method init
    */
-  init() {
+  constructor() {
+    // @ts-expect-error Using ...arguments is fine.
+    // eslint-disable-next-line prefer-rest-params
+    super(...arguments);
+
     this._connect();
-    return super.init(...arguments);
   }
 
-  @computed
   get inspectedWindow() {
-    return window.opener || window.parent;
+    return (window.opener as Window | undefined) || window.parent;
   }
 
-  @computed
   get inspectedWindowURL() {
     return loadPageVar('inspectedWindowURL');
   }
 
-  sendMessage(options) {
-    options = options || {};
-    this.inspectedWindow.postMessage(options, this.inspectedWindowURL);
+  sendMessage(message?: Partial<Message>) {
+    this.inspectedWindow.postMessage(message ?? {}, this.inspectedWindowURL);
   }
 
   /**
    * Redirect to the correct inspector version.
-   *
-   * @method onVersionMismatch
-   * @param {String} goToVersion
    */
-  onVersionMismatch(goToVersion) {
+  onVersionMismatch(goToVersion: string) {
     this.sendMessage({ name: 'version-mismatch', version: goToVersion });
     window.location.href = `../panes-${goToVersion.replace(
       /\./g,
-      '-'
+      '-',
     )}/index.html${window.location.search}`;
   }
 
   _connect() {
     window.addEventListener('message', (e) => {
-      let message = e.data;
+      const message = e.data as Message;
       if (e.origin !== this.inspectedWindowURL) {
         return;
       }
@@ -62,17 +55,17 @@ export default class Bookmarklet extends BasicAdapter {
   }
 }
 
-function loadPageVar(sVar) {
+function loadPageVar(sVar: string) {
   return decodeURI(
     window.location.search.replace(
       new RegExp(
         `^(?:.*[&\\?]${encodeURI(sVar).replace(
           /[\.\+\*]/g,
-          '\\$&'
+          '\\$&',
         )}(?:\\=([^&]*))?)?.*$`,
-        'i'
+        'i',
       ),
-      '$1'
-    )
+      '$1',
+    ),
   );
 }

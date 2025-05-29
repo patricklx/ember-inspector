@@ -27,7 +27,7 @@ import { EmberLoader } from 'ember-debug/utils/ember/loader';
 const GlimmerComponent = (() => {
   try {
     return EmberLoader.require('@glimmer/component').default;
-  } catch (e) {
+  } catch {
     // ignore, return undefined
   }
 })();
@@ -70,14 +70,14 @@ try {
     }
     return r;
   };
-} catch (e) {
+} catch {
   try {
     // Fallback to the previous implementation
     let GlimmerReference = EmberLoader.require('@glimmer/reference');
 
     tagValue = GlimmerReference.value;
     tagValidate = GlimmerReference.validate;
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -88,7 +88,7 @@ try {
   tagForProperty = metal.tagForProperty;
   // If track was not already loaded, use metal's version (the previous version)
   track = track || metal.track;
-} catch (e) {
+} catch {
   // ignore
 }
 
@@ -178,7 +178,7 @@ function getTrackedDependencies(object, property, tagInfo) {
   const dependentKeys = [];
   if (cpDesc) {
     dependentKeys.push(
-      ...(cpDesc._dependentKeys || []).map((k) => ({ name: k }))
+      ...(cpDesc._dependentKeys || []).map((k) => ({ name: k })),
     );
   }
   if (HAS_GLIMMER_TRACKING) {
@@ -309,7 +309,7 @@ export default class extends DebugPort {
                 dependentKeys = getTrackedDependencies(
                   object,
                   item.name,
-                  tracked[item.name]
+                  tracked[item.name],
                 );
                 tracked[item.name].revision = tagValue(tracked[item.name].tag);
               }
@@ -324,7 +324,7 @@ export default class extends DebugPort {
                 dependentKeys,
               });
             }
-          } catch (e) {
+          } catch {
             // dont do anything
           }
         });
@@ -332,6 +332,7 @@ export default class extends DebugPort {
     }
   }
 
+  // eslint-disable-next-line ember/classic-decorator-hooks
   init() {
     super.init();
     this.sentObjects = {};
@@ -370,7 +371,7 @@ export default class extends DebugPort {
         value = this.valueForObjectProperty(
           message.objectId,
           message.property,
-          message.mixinIndex
+          message.mixinIndex,
         );
         if (value) {
           this.sendMessage('updateProperty', value);
@@ -451,7 +452,7 @@ export default class extends DebugPort {
           }
           this.adapter.log(
             `Object Inspector error for ${error.property}`,
-            stack
+            stack,
           );
         });
       },
@@ -546,7 +547,7 @@ export default class extends DebugPort {
   sendObject(object) {
     if (!this.canSend(object)) {
       throw new Error(
-        `Can't inspect ${object}. Only Ember objects and arrays are supported.`
+        `Can't inspect ${object}. Only Ember objects and arrays are supported.`,
       );
     }
     let details = this.mixinsForObject(object);
@@ -670,7 +671,7 @@ export default class extends DebugPort {
           if (name === '(unknown)') {
             name = '(unknown mixin)';
           }
-        } catch (e) {
+        } catch {
           name = '(Unable to convert Object to string)';
         }
       }
@@ -745,7 +746,7 @@ export default class extends DebugPort {
       mixinDetails,
       errorsForObject,
       expensiveProperties,
-      tracked
+      tracked,
     );
 
     this.currentObject = { object, mixinDetails, objectId };
@@ -764,7 +765,7 @@ export default class extends DebugPort {
       value = calculateCP(
         object,
         { name: property },
-        this._errorsFor[objectId]
+        this._errorsFor[objectId],
       );
     }
 
@@ -934,7 +935,7 @@ function addProperties(properties, hash) {
     if (isComputed(hash, prop)) {
       options.isComputed = true;
       options.dependentKeys = (desc._dependentKeys || []).map((key) =>
-        key.toString()
+        key.toString(),
       );
 
       if (typeof desc.get === 'function') {
@@ -1085,7 +1086,7 @@ function calculateCPs(
   mixinDetails,
   errorsForObject,
   expensiveProperties,
-  tracked
+  tracked,
 ) {
   expensiveProperties = expensiveProperties || [];
   mixinDetails.forEach((mixin) => {
@@ -1113,7 +1114,7 @@ function calculateCPs(
             item.dependentKeys = getTrackedDependencies(
               object,
               item.name,
-              tagInfo
+              tagInfo,
             );
             tagInfo.revision = tagValue(tagInfo.tag);
           } else {
@@ -1282,7 +1283,7 @@ function getDebugInfo(object) {
       'domManager',
       'states',
       'element',
-      'targetObject'
+      'targetObject',
     );
   } else if (GlimmerComponent && object instanceof GlimmerComponent) {
     // These properties don't really exist on Glimmer Components, but
@@ -1304,7 +1305,7 @@ function calculateCP(object, item, errorsForObject) {
   delete errorsForObject[property];
   try {
     if (object instanceof ArrayProxy && property == parseInt(property)) {
-      return object.objectAt(property);
+      return object.at(property);
     }
     return item.isGetter || property.includes?.('.')
       ? object[property]

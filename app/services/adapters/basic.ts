@@ -14,22 +14,27 @@
 import Service, { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import type { AnyFn } from '@ember/-internals/utility-types';
 import config from 'ember-inspector/config/environment';
+import type PortService from '../port';
+import type { Message } from '../port';
 
 export default class Basic extends Service {
-  @service port;
+  @service declare port: PortService;
+
+  _messageCallbacks: Array<AnyFn>;
+  name = 'basic';
 
   @tracked canOpenResource = false;
-  name = 'basic';
 
   /**
    * Called when the adapter is created (when
    * the inspector app boots).
-   *
-   * @method init
    */
-  init() {
-    super.init(...arguments);
+  constructor() {
+    // eslint-disable-next-line prefer-rest-params
+    super(...arguments);
+
     this._messageCallbacks = [];
     this._checkVersion();
   }
@@ -41,20 +46,22 @@ export default class Basic extends Service {
    * Ember version and needs to switch to an inspector version
    * that does.
    *
-   * @method _checkVersion
    * @private
    */
   _checkVersion() {
-    this.onMessageReceived((message) => {
-      let { name, version } = message;
+    this.onMessageReceived((message: Message) => {
+      const { name, version } = message;
       if (name === 'version-mismatch') {
-        let previousVersions = config.previousEmberVersionsSupported;
-        let [fromVersion, tillVersion] = config.emberVersionsSupported;
+        const previousVersions = config.previousEmberVersionsSupported;
+        const [fromVersion, tillVersion] = config.emberVersionsSupported;
         let neededVersion;
 
-        if (compareVersion(version, fromVersion) === -1) {
+        if (compareVersion(version as string, fromVersion) === -1) {
           neededVersion = previousVersions[previousVersions.length - 1];
-        } else if (tillVersion && compareVersion(version, tillVersion) !== -1) {
+        } else if (
+          tillVersion &&
+          compareVersion(version as string, tillVersion) !== -1
+        ) {
           neededVersion = tillVersion;
         } else {
           return;
@@ -73,35 +80,35 @@ export default class Basic extends Service {
    * to switch to an older/new inspector version
    * that supports this Ember version.
    *
-   * @method onVersionMismatch
-   * @param {String} neededVersion (The version to go to)
+   * @param _neededVersion (The version to go to)
    */
-  onVersionMismatch() {}
+  onVersionMismatch(_neededVersion?: string) {}
 
   /**
     Used to send messages to EmberDebug
 
-    @param type {Object} the message to the send
+    @param _message the message to send
   **/
-  sendMessage() {}
+  sendMessage(_message: Partial<Message>) {}
 
   /**
     Register functions to be called
     when a message from EmberDebug is received
   **/
-  onMessageReceived(callback) {
+  onMessageReceived(callback: AnyFn) {
     this._messageCallbacks.push(callback);
   }
 
-  _messageReceived(...args) {
+  _messageReceived(...args: Array<unknown>) {
     this._messageCallbacks.forEach((callback) => {
       callback(...args);
     });
   }
 
+  reloadTab?(): void;
   // Called when the "Reload" is clicked by the user
   willReload() {}
-  openResource /* file, line */() {}
+  openResource(_file: string, _line: number) {}
 
   @action
   refreshPage() {
@@ -126,15 +133,14 @@ export default class Basic extends Service {
  * 0 if version1 == version2
  * 1 if version1 > version2
  *
- * @param {String} version1
- * @param {String} version2
- * @return {Boolean} result of the comparison
+ * @return result of the comparison
  */
-function compareVersion(version1, version2) {
-  version1 = cleanupVersion(version1).split('.');
-  version2 = cleanupVersion(version2).split('.');
+function compareVersion(version1: string, version2: string) {
+  const v1 = cleanupVersion(version1).split('.');
+  const v2 = cleanupVersion(version2).split('.');
   for (let i = 0; i < 3; i++) {
-    let compared = compare(+version1[i], +version2[i]);
+    // @ts-expect-error TODO: refactor this to make TS happy
+    const compared = compare(+v1[i], +v2[i]);
     if (compared !== 0) {
       return compared;
     }
@@ -143,11 +149,11 @@ function compareVersion(version1, version2) {
 }
 
 /* Remove -alpha, -beta, etc from versions */
-function cleanupVersion(version) {
+function cleanupVersion(version: string) {
   return version.replace(/-.*/g, '');
 }
 
-function compare(val, number) {
+function compare(val: number, number: number) {
   if (val === number) {
     return 0;
   } else if (val < number) {

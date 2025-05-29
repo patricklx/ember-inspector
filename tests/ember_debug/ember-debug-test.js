@@ -25,14 +25,12 @@ module('Ember Debug', function (hooks) {
     try {
       EmberDebug.inspect(obj);
       assert.ok(false);
-    } catch (e) {
+    } catch {
       // Intentionally empty
     }
   }
 
   test('EmberDebug#inspect sends inspectable objects', function (assert) {
-    assert.expect(2);
-
     let obj = EmberObject.create();
     EmberDebug.inspect(obj);
     assert.strictEqual(name, 'objectInspector:updateObject');
@@ -46,7 +44,6 @@ module('Ember Debug', function (hooks) {
   });
 
   test('Errors are caught and handled by EmberDebug', async function t(assert) {
-    assert.expect(1);
     const error = new Error('test error');
     EmberDebug.port.on('test:errors', () => {
       throw error;

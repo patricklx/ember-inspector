@@ -34,7 +34,7 @@ const emberNames = new Map([
 
 if (compareVersion(VERSION, '3.27.0') === -1) {
   const TargetActionSupport = emberSafeRequire(
-    '@ember/-internals/runtime'
+    '@ember/-internals/runtime',
   )?.TargetActionSupport;
   emberNames.set(TargetActionSupport, 'TargetActionSupport Mixin');
 }
@@ -49,7 +49,7 @@ try {
   emberNames.set(Views.ViewStateSupport, 'ViewStateSupport  Mixin');
   // this one is not a Mixin, but an .extend({}), which results in a class
   emberNames.set(Views.CoreView, 'CoreView');
-} catch (e) {
+} catch {
   // do nothing
 }
 
