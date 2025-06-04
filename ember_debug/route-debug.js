@@ -11,6 +11,8 @@ const { hasOwnProperty } = Object.prototype;
 
 export default class RouteDebug extends DebugPort {
   _cachedRouteTree = null;
+
+  // eslint-disable-next-line ember/classic-decorator-hooks
   init() {
     super.init();
     this.__currentURL = this.currentURL;
@@ -67,7 +69,6 @@ export default class RouteDebug extends DebugPort {
     };
   }
 
-  // eslint-disable-next-line ember/no-observers
   sendCurrentRoute() {
     const { currentPath: name, currentURL: url } = this;
     later(() => {
@@ -133,7 +134,7 @@ export default class RouteDebug extends DebugPort {
         // Module exists and found
         className = className.replace(
           new RegExp(`^/?(${prefix}|${podPrefix})/${type}s/`),
-          ''
+          '',
         );
       } else {
         // Module does not exist

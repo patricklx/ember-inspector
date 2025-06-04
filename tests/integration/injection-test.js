@@ -122,7 +122,7 @@ class ChromeApi {
       },
       sendMessage(msg) {
         (self.backgroundScript || self.inspector).subscribers.forEach((sub) =>
-          sub(msg, self.sender)
+          sub(msg, self.sender),
         );
       },
       onMessage: {
@@ -236,7 +236,6 @@ module('Integration | Injection', function (hooks) {
     if (injected) return;
     const backgroundScript = await (await fetch('/background.js')).text();
     {
-      // eslint-disable-next-line no-unused-vars
       const chrome = backgroundChromeApi;
       eval(backgroundScript);
       assert.strictEqual(chrome.onRemovedListeners.length, 1);
@@ -251,10 +250,10 @@ module('Integration | Injection', function (hooks) {
     let windowMessages = 0;
 
     // setup global loader for ember-debug, will be reset after test
-    // eslint-disable-next-line no-unused-vars
+
     const { define, requireModule } = getLoader(
       window.define,
-      window.requireModule
+      window.requireModule,
     );
     window.define = define;
     window.requireModule = requireModule;
@@ -262,7 +261,7 @@ module('Integration | Injection', function (hooks) {
       // eslint-disable-next-line no-unused-vars
       const chrome = contentChromeApi;
       backgroundChromeApi.onTabActivatedListeners.forEach((act) =>
-        act({ tabId: 1 })
+        act({ tabId: 1 }),
       );
       eval(contentScript);
     }
@@ -270,7 +269,7 @@ module('Integration | Injection', function (hooks) {
     assert.strictEqual(
       windowMessages,
       0,
-      'content script should not send window messages'
+      'content script should not send window messages',
     );
 
     window.chrome = inspectorChromeApi;
@@ -314,7 +313,6 @@ module('Integration | Injection', function (hooks) {
     window.NO_EMBER_DEBUG = true;
   });
 
-  // eslint-disable-next-line qunit/require-expect
   test('inject ember debug via content and background scripts', async function (assert) {
     await inject(this.owner, assert);
     const { requireModule } = getLoader(window.define, window.requireModule);
@@ -322,20 +320,18 @@ module('Integration | Injection', function (hooks) {
     assert.notStrictEqual(
       emberDebug,
       undefined,
-      'ember debug should be loaded'
+      'ember debug should be loaded',
     );
   });
 
-  // eslint-disable-next-line qunit/require-expect
   test('add Inspect Ember Component Context Menu Item', async function (assert) {
     await inject(this.owner, assert);
     assert.true(
       !!backgroundChromeApi.registeredContextMenus['inspect-ember-component'],
-      'should have registered context menu'
+      'should have registered context menu',
     );
   });
 
-  // eslint-disable-next-line qunit/require-expect
   test('triggering Ember Component Context Menu Item should call inspect nearest', async function (assert) {
     await inject(this.owner, assert);
     assert.timeout(10);

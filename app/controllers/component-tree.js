@@ -53,7 +53,7 @@ export default class ComponentTreeController extends Controller {
           renderNode.children.some((c) => c.type === 'modifier')
         ) {
           const idx = renderNode.children.findLastIndex(
-            (c) => c.type === 'modifier'
+            (c) => c.type === 'modifier',
           );
           renderNode.children.splice(idx + 1, 0, {
             type: 'placeholder-closing-tag',
@@ -182,6 +182,7 @@ export default class ComponentTreeController extends Controller {
   }
 
   syncInspection() {
+    // eslint-disable-next-line ember/no-runloop
     debounce(this, this._syncInspection, 50);
   }
 
@@ -279,7 +280,7 @@ function isInternalRenderNode(renderNode) {
 
 function focusedInInput() {
   return ['input', 'textarea'].includes(
-    document.activeElement.tagName.toLowerCase()
+    document.activeElement.tagName.toLowerCase(),
   );
 }
 

@@ -2,6 +2,7 @@ import DebugPort from './debug-port';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
 
 export default class extends DebugPort {
+  // eslint-disable-next-line ember/classic-decorator-hooks
   init() {
     super.init();
     this.sentTypes = {};
@@ -11,7 +12,6 @@ export default class extends DebugPort {
   releaseTypesMethod = null;
   releaseRecordsMethod = null;
 
-  /* eslint-disable ember/no-side-effects */
   get adapter() {
     const owner = this.namespace?.owner;
 
@@ -26,7 +26,6 @@ export default class extends DebugPort {
 
     return null;
   }
-  /* eslint-enable ember/no-side-effects */
 
   _resolve(name) {
     const owner = this.namespace?.owner;
@@ -93,7 +92,7 @@ export default class extends DebugPort {
     }
     // make sure keywords can be searched and clonable
     searchKeywords = record.searchKeywords.filter(
-      (keyword) => typeof keyword === 'string' || typeof keyword === 'number'
+      (keyword) => typeof keyword === 'string' || typeof keyword === 'number',
     );
     return {
       columnValues,
@@ -142,7 +141,7 @@ export default class extends DebugPort {
           },
           (types) => {
             this.modelTypesUpdated(types);
-          }
+          },
         );
       },
 
@@ -171,7 +170,7 @@ export default class extends DebugPort {
           },
           (...args) => {
             this.recordsRemoved(...args);
-          }
+          },
         );
         this.releaseRecordsMethod = releaseMethod;
       },
@@ -182,7 +181,7 @@ export default class extends DebugPort {
 
       inspectModel(message) {
         this.objectInspector.sendObject(
-          this.sentRecords[message.objectId].object
+          this.sentRecords[message.objectId].object,
         );
       },
 

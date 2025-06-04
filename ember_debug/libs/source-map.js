@@ -3,6 +3,7 @@ import * as SourceMap from 'ember-debug/deps/source-map';
 const notFoundError = new Error('Source map url not found');
 
 export default class extends BaseObject {
+  // eslint-disable-next-line ember/classic-decorator-hooks
   init() {
     super.init();
     this._lastPromise = Promise.resolve(undefined);
@@ -62,7 +63,7 @@ export default class extends BaseObject {
       function () {
         sourceMaps[url] = null;
       },
-      'ember-inspector'
+      'ember-inspector',
     );
   }
 }
@@ -81,7 +82,7 @@ function retrieveSourceMap(source) {
         return mapURL;
       },
       null,
-      'ember-inspector'
+      'ember-inspector',
     )
     .then(retrieveFile, null, 'ember-inspector')
     .then(
@@ -95,7 +96,7 @@ function retrieveSourceMap(source) {
         };
       },
       null,
-      'ember-inspector'
+      'ember-inspector',
     );
 }
 
@@ -142,7 +143,7 @@ function retrieveSourceMapURL(source) {
       return url;
     },
     null,
-    'ember-inspector'
+    'ember-inspector',
   );
 }
 

@@ -41,6 +41,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with: 
+          token: ${{ secrets.GH_PAT }}
       - uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -54,5 +56,5 @@ jobs:
       - name: npm publish
         run: pnpm release-plan publish --singlePackage=ember-inspector
         env:
-          GITHUB_AUTH: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_AUTH: ${{ secrets.GH_PAT }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
