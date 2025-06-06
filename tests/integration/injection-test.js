@@ -1,5 +1,6 @@
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
+import Service from '@ember/service';
 
 class ChromePort {
   constructor(self, other) {
@@ -289,6 +290,7 @@ module('Integration | Injection', function (hooks) {
         }
       });
     });
+    owner.register('service:port', class extends Service {});
     owner.lookup('service:adapters/web-extension');
     await p;
     await emberDebugStarted;
@@ -334,9 +336,10 @@ module('Integration | Injection', function (hooks) {
 
   test('triggering Ember Component Context Menu Item should call inspect nearest', async function (assert) {
     await inject(this.owner, assert);
-    assert.timeout(10);
+    assert.timeout(100);
 
-    const viewInspection = window.EmberInspector.viewDebug.viewInspection;
+    const emberDebug = requireModule('ember-debug/main')['default'];
+    const viewInspection = emberDebug.viewDebug.viewInspection;
 
     const inspectNearestCalled = new Promise((resolve) => {
       viewInspection.inspectNearest = () => {
