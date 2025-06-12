@@ -1109,7 +1109,7 @@ module('Ember Debug - View', function (hooks) {
 
       inElement = find('.test-in-element-in-component');
 
-      await click('.test-in-element-in-component');
+      await triggerEvent('.test-in-element-in-component', 'mousemove');
 
       assert
         .dom('.ember-inspector-tooltip-header', tooltip)
