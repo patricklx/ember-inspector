@@ -1,6 +1,4 @@
 /* eslint-disable ember/new-module-imports */
-import { emberSafeRequire } from 'ember-debug/utils/ember/loader';
-
 let Ember;
 
 try {
@@ -13,6 +11,22 @@ try {
   Ember = Ember || requireModule('ember').default;
 } catch {
   Ember = window.Ember;
+}
+
+const wrappedRequire = function (id) {
+  try {
+    return Ember.__loader.require(id);
+  } catch {
+    return requireModule(id);
+  }
+};
+
+export function emberSafeRequire(id) {
+  try {
+    return wrappedRequire(id);
+  } catch {
+    return undefined;
+  }
 }
 
 let ArrayProxy = Ember.ArrayProxy;
@@ -41,12 +55,22 @@ let captureRenderTree = Ember._captureRenderTree;
 
 let getEnv = () => Ember.ENV;
 
-let Debug = emberSafeRequire('@ember/debug')?.default;
-let InternalsUtils = emberSafeRequire('@ember/-internals/utils')?.default;
-let ObjectInternals = emberSafeRequire('@ember/object/internals')?.default;
-let Instrumentation = emberSafeRequire('@ember/instrumentation')?.default;
-let RSVP = emberSafeRequire('rsvp')?.default;
-let Runloop = emberSafeRequire('@ember/runloop')?.default;
+let Debug = emberSafeRequire('@ember/debug');
+let InternalsMetal = emberSafeRequire('@ember/-internals/metal');
+let InternalsRuntime = emberSafeRequire('@ember/-internals/runtime');
+let InternalsUtils = emberSafeRequire('@ember/-internals/utils');
+let InternalsViews = emberSafeRequire('@ember/-internals/views');
+let EmberDestroyable = emberSafeRequire('@ember/destroyable');
+let ObjectInternals = emberSafeRequire('@ember/object/internals');
+let Instrumentation = emberSafeRequire('@ember/instrumentation');
+let Runloop = emberSafeRequire('@ember/runloop');
+let RSVP = emberSafeRequire('rsvp');
+let GlimmerComponent = emberSafeRequire('@glimmer/component');
+let GlimmerManager = emberSafeRequire('@glimmer/manager');
+let GlimmerReference = emberSafeRequire('@glimmer/reference');
+let GlimmerRuntime = emberSafeRequire('@glimmer/runtime');
+let GlimmerUtil = emberSafeRequire('@glimmer/util');
+let GlimmerValidator = emberSafeRequire('@glimmer/validator');
 
 if (!Ember) {
   captureRenderTree = emberSafeRequire('@ember/debug')?.captureRenderTree;
@@ -80,7 +104,10 @@ if (!Ember) {
 export {
   Runloop,
   Debug,
+  InternalsMetal,
+  InternalsRuntime,
   InternalsUtils,
+  InternalsViews,
   ObjectInternals,
   Instrumentation,
   RSVP,
@@ -99,6 +126,7 @@ export {
   Evented,
   Service,
   PromiseProxyMixin,
+  EmberDestroyable,
   EmberObject,
   VERSION,
   ComputedProperty,
@@ -108,6 +136,12 @@ export {
   set,
   captureRenderTree,
   getEnv,
+  GlimmerComponent,
+  GlimmerManager,
+  GlimmerReference,
+  GlimmerRuntime,
+  GlimmerUtil,
+  GlimmerValidator,
 };
 
 export default Ember;

@@ -1,36 +1,31 @@
 import captureRenderTree from './capture-render-tree';
 import { guidFor } from 'ember-debug/utils/ember/object/internals';
-import { EmberLoader, emberSafeRequire } from 'ember-debug/utils/ember/loader';
 import { inspect } from 'ember-debug/utils/type-check';
 import { isInVersionSpecifier } from 'ember-debug/utils/version';
-import { VERSION } from 'ember-debug/utils/ember';
+import {
+  VERSION,
+  EmberDestroyable,
+  GlimmerManager,
+  GlimmerReference,
+  GlimmerRuntime,
+  GlimmerUtil,
+} from 'ember-debug/utils/ember';
 
 class InElementSupportProvider {
   constructor(owner) {
     this.nodeMap = new Map();
     this.remoteRoots = [];
-    this.runtime = this.require('@glimmer/runtime');
-    this.reference = this.require('@glimmer/reference');
-    try {
-      this.Wormhole = requireModule('ember-wormhole/components/ember-wormhole');
-    } catch {
-      // nope
+    this.runtime = GlimmerRuntime;
+    this.reference = GlimmerReference;
+
+    if (GlimmerManager) {
+      GlimmerManager.CustomModifierManager.prototype.getDebugInstance = (
+        args,
+      ) => args.modifier || args.delegate;
     }
 
-    try {
-      requireModule(
-        '@glimmer/manager',
-      ).CustomModifierManager.prototype.getDebugInstance = (args) =>
-        args.modifier || args.delegate;
-    } catch {
-      // nope
-    }
-
-    this.DESTROY = emberSafeRequire('@glimmer/util')?.DESTROY;
-    this.registerDestructor =
-      emberSafeRequire('@glimmer/destroyable')?.registerDestructor ||
-      emberSafeRequire('@ember/destroyable')?.registerDestructor ||
-      emberSafeRequire('@ember/runtime')?.registerDestructor;
+    this.DESTROY = GlimmerUtil?.DESTROY;
+    this.registerDestructor = EmberDestroyable?.registerDestructor;
 
     this.debugRenderTree =
       owner.lookup('renderer:-dom')?.debugRenderTree ||
@@ -289,12 +284,6 @@ class InElementSupportProvider {
       this.NewElementBuilderFunctions,
     );
     this.NewElementBuilderFunctions = null;
-  }
-
-  require(req) {
-    return requireModule.has(req)
-      ? requireModule(req)
-      : EmberLoader.require(req);
   }
 }
 
@@ -613,9 +602,11 @@ export default class RenderTree {
         this.inElementSupport?.remoteRoots.push(node);
       }
 
+      // EmberWormhole component from ember-wormhole was used to provide
+      // rendering into a given DOM element prior to built-in in-element.
       if (
-        this.inElementSupport?.Wormhole &&
-        node.instance instanceof this.inElementSupport.Wormhole.default
+        node.template ===
+        'ember-wormhole/templates/components/ember-wormhole.hbs'
       ) {
         this.inElementSupport?.remoteRoots.push(node);
         const bounds = node.bounds;
@@ -643,10 +634,11 @@ export default class RenderTree {
           node.args.named[attr.nodeName] = attr.nodeValue;
         });
         // move modifiers and components into the element children
+
         parentNode.children.forEach((child) => {
           if (
-            child.bounds.parentElement === node.instance ||
-            child.meta?.parentElement === node.instance ||
+            node.instance.contains(child.bounds.parentElement) ||
+            node.instance.contains(child.meta?.parentElement) ||
             (child.type === 'modifier' &&
               child.bounds.firstNode === node.instance)
           ) {
