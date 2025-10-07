@@ -15,7 +15,7 @@ function checkStatus(response) {
 
 function getLatestEntry(doc) {
   const regex =
-    /^#{2} (?:v(\d{1,2}(?:\.\d{1,2})?(?:\.\d{1,2})?)|(?:\[v?(.+)]))/gm;
+    /^## Release /gm;
   const latest = regex.exec(doc);
   const previous = regex.exec(doc);
 
