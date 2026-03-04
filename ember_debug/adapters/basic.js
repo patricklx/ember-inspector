@@ -1,6 +1,6 @@
 /* eslint no-console: 0 */
-import { onReady } from 'ember-debug/utils/on-ready';
-import BaseObject from '../utils/base-object';
+import { onReady } from '../utils/on-ready';
+import BaseObject from '../utils/base-object.js';
 
 export default class BasicAdapter extends BaseObject {
   // eslint-disable-next-line ember/classic-decorator-hooks
@@ -10,21 +10,6 @@ export default class BasicAdapter extends BaseObject {
     }, null);
 
     this._messageCallbacks = [];
-  }
-
-  /**
-   * Uses the current build's config module to determine
-   * the environment.
-   *
-   * @property environment
-   * @type {String}
-   */
-  get environment() {
-    if (!this.__environment) {
-      this.__environment =
-        requireModule('ember-debug/config')['default'].environment;
-    }
-    return this.__environment;
   }
 
   debug() {
@@ -94,19 +79,14 @@ export default class BasicAdapter extends BaseObject {
    * @param {Error} error
    */
   handleError(error) {
-    if (this.environment === 'production') {
-      if (error && error instanceof Error) {
-        error = `Error message: ${error.message}\nStack trace: ${error.stack}`;
-      }
-      this.warn(
-        `Ember Inspector has errored.\n` +
-          `This is likely a bug in the inspector itself.\n` +
-          `You can report bugs at https://github.com/emberjs/ember-inspector.\n${error}`,
-      );
-    } else {
-      this.warn('EmberDebug has errored:');
-      throw error;
+    if (error && error instanceof Error) {
+      error = `Error message: ${error.message}\nStack trace: ${error.stack}`;
     }
+    this.warn(
+      `Ember Inspector has errored.\n` +
+        `This is likely a bug in the inspector itself.\n` +
+        `You can report bugs at https://github.com/emberjs/ember-inspector.\n${error}`,
+    );
   }
 
   /**

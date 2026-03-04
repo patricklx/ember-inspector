@@ -1,4 +1,4 @@
-import Controller, { inject as controller } from '@ember/controller';
+import Controller from '@ember/controller';
 import { action } from '@ember/object';
 import { debounce } from '@ember/runloop';
 import { inject as service } from '@ember/service';
@@ -14,11 +14,12 @@ export default class ComponentTreeController extends Controller {
   // Estimated height for each row
   itemHeight = 22;
 
-  @controller application;
   @service port;
+  @service layout;
 
   @tracked query = '';
   @tracked isInspecting = false;
+  @tracked showParentsOnly = false;
   @tracked renderItems = [];
 
   @tracked _pinned = undefined;
@@ -145,14 +146,14 @@ export default class ComponentTreeController extends Controller {
           objectId: item.instance,
         });
       } else {
-        this.application.hideInspector();
+        this.layout.hideInspector();
       }
     } else {
       this._pinned = undefined;
       this._previewing = undefined;
 
       this.port.send('view:hideInspection');
-      this.application.hideInspector();
+      this.layout.hideInspector();
     }
 
     this.syncInspection();
@@ -269,6 +270,10 @@ export default class ComponentTreeController extends Controller {
   @action arrowKeysTeardown() {
     document.removeEventListener('keydown', this.handleKeyDown);
   }
+
+  @action toggleParentsOnly() {
+    this.showParentsOnly = !this.showParentsOnly;
+  }
 }
 
 function isInternalRenderNode(renderNode) {
@@ -288,7 +293,7 @@ function arrowKeyPressed(keyCode) {
   return [KEYS.up, KEYS.right, KEYS.down, KEYS.left].includes(keyCode);
 }
 
-class RenderItem {
+export class RenderItem {
   @tracked isExpanded;
   @tracked renderNode;
 
@@ -417,9 +422,22 @@ class RenderItem {
   get isVisible() {
     if (this.isRoot) {
       return true;
+    } else if (this.controller.showParentsOnly) {
+      return (
+        this.hasPinnedChild() ||
+        (this.hasPinnedParent() && this.parentItem.isExpanded)
+      );
     } else {
       return this.parentItem.isVisible && this.parentItem.isExpanded;
     }
+  }
+
+  hasPinnedParent() {
+    return this.isPinned || this.parentItem?.hasPinnedParent();
+  }
+
+  hasPinnedChild() {
+    return this.isPinned || this.childItems.some((c) => c.hasPinnedChild());
   }
 
   get isPinned() {

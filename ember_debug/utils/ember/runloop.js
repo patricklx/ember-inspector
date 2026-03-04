@@ -1,5 +1,5 @@
-import Ember, { Runloop as EmberRunloop } from '../ember';
-import * as runloop from './own-runloop';
+import { Runloop as EmberRunloop } from '../ember.js';
+import * as runloop from './own-runloop.js';
 
 // it could happen that runloop is available but _backburner is not exported (dead code)
 // then we need to use our own.
@@ -8,14 +8,9 @@ let _backburner = runloop._backburner;
 
 const keys = ['cancel', 'debounce', 'join', 'later', 'scheduleOnce'];
 
-if (EmberRunloop) {
+if (EmberRunloop?._backburner || EmberRunloop?.backburner) {
   module = EmberRunloop;
-  _backburner = EmberRunloop._backburner;
-} else {
-  // eslint-disable-next-line ember/new-module-imports
-  module = Ember?.run || module;
-  // eslint-disable-next-line ember/new-module-imports
-  _backburner = Ember?.run?.backburner || _backburner;
+  _backburner = EmberRunloop._backburner || EmberRunloop.backburner;
 }
 
 if (!keys.every((k) => k in module)) {

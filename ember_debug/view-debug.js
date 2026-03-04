@@ -1,8 +1,8 @@
 /* eslint no-cond-assign:0 */
-import DebugPort from './debug-port';
-import RenderTree from 'ember-debug/libs/render-tree';
-import ViewInspection from 'ember-debug/libs/view-inspection';
-import bound from 'ember-debug/utils/bound-method';
+import DebugPort from './debug-port.js';
+import RenderTree from './libs/render-tree';
+import ViewInspection from './libs/view-inspection';
+import bound from './utils/bound-method';
 
 export default class extends DebugPort {
   get adapter() {
@@ -103,6 +103,11 @@ export default class extends DebugPort {
   onRightClick(event) {
     if (event.button === 2) {
       this.lastRightClicked = event.target;
+      if (event.target.shadowRoot) {
+        this.lastRightClicked =
+          event.target.shadowRoot.elementFromPoint(event.x, event.y) ||
+          event.target;
+      }
     }
   }
 

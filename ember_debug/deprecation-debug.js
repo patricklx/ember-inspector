@@ -1,9 +1,9 @@
-import DebugPort from './debug-port';
-import SourceMap from 'ember-debug/libs/source-map';
+import DebugPort from './debug-port.js';
+import SourceMap from './libs/source-map';
 
-import { registerDeprecationHandler } from 'ember-debug/utils/ember/debug';
-import { guidFor } from 'ember-debug/utils/ember/object/internals';
-import { cancel, debounce } from 'ember-debug/utils/ember/runloop';
+import { Debug } from './utils/ember';
+import { guidFor } from './utils/ember/object/internals';
+import { cancel, debounce } from './utils/ember/runloop';
 
 export default class extends DebugPort {
   static {
@@ -194,7 +194,7 @@ export default class extends DebugPort {
   }
 
   handleDeprecations() {
-    registerDeprecationHandler((message, options, next) => {
+    Debug.registerDeprecationHandler((message, options, next) => {
       if (!this.adapter) {
         next(message, options);
         return;

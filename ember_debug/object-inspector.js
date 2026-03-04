@@ -1,13 +1,13 @@
 /* eslint-disable ember/no-private-routing-service */
-import DebugPort from './debug-port';
-import bound from 'ember-debug/utils/bound-method';
+import DebugPort from './debug-port.js';
+import bound from './utils/bound-method';
 import {
   isComputed,
   getDescriptorFor,
   typeOf,
   inspect,
-} from 'ember-debug/utils/type-check';
-import { compareVersion } from 'ember-debug/utils/version';
+} from './utils/type-check';
+import { compareVersion } from './utils/version';
 import {
   EmberObject,
   meta as emberMeta,
@@ -16,28 +16,30 @@ import {
   ObjectProxy,
   ArrayProxy,
   Service,
+  InternalsMetal,
   Component,
-} from 'ember-debug/utils/ember';
-import { cacheFor, guidFor } from 'ember-debug/utils/ember/object/internals';
-import { _backburner, join } from 'ember-debug/utils/ember/runloop';
-import emberNames from './utils/ember-object-names';
-import getObjectName from './utils/get-object-name';
-import { EmberLoader } from 'ember-debug/utils/ember/loader';
-
-const GlimmerComponent = (() => {
-  try {
-    return EmberLoader.require('@glimmer/component').default;
-  } catch {
-    // ignore, return undefined
-  }
-})();
+  GlimmerComponent,
+  GlimmerReference,
+  GlimmerValidator,
+  getOwner,
+} from './utils/ember';
+import { cacheFor, guidFor } from './utils/ember/object/internals';
+import { _backburner, join } from './utils/ember/runloop';
+import emberNames from './utils/ember-object-names.js';
+import getObjectName from './utils/get-object-name.js';
 
 let tagValue, tagValidate, track, tagForProperty;
 
-try {
-  // Try to load the most recent library
-  let GlimmerValidator = EmberLoader.require('@glimmer/validator');
+const GlimmerDebugComponent = (() => GlimmerComponent?.default)();
 
+const OWNER_SYMBOL = '__owner__'; // can't use actual symbol because it can't be cloned
+
+// Try to use the most recent library (GlimmerValidator), else
+// fallback on the previous implementation (GlimmerReference).
+// The global checks if the inspected app is Vite, in that case
+// we can't execute that block because the properties it tries to
+// assign are readonly.
+if (GlimmerValidator && !globalThis.emberInspectorApps) {
   tagValue = GlimmerValidator.value || GlimmerValidator.valueForTag;
   tagValidate = GlimmerValidator.validate || GlimmerValidator.validateTag;
   track = GlimmerValidator.track;
@@ -70,26 +72,15 @@ try {
     }
     return r;
   };
-} catch {
-  try {
-    // Fallback to the previous implementation
-    let GlimmerReference = EmberLoader.require('@glimmer/reference');
-
-    tagValue = GlimmerReference.value;
-    tagValidate = GlimmerReference.validate;
-  } catch {
-    // ignore
-  }
+} else if (GlimmerReference) {
+  tagValue = GlimmerReference.value;
+  tagValidate = GlimmerReference.validate;
 }
 
-try {
-  let metal = EmberLoader.require('@ember/-internals/metal');
-
-  tagForProperty = metal.tagForProperty;
+if (InternalsMetal) {
+  tagForProperty = InternalsMetal.tagForProperty;
   // If track was not already loaded, use metal's version (the previous version)
-  track = track || metal.track;
-} catch {
-  // ignore
+  track = track || InternalsMetal.track;
 }
 
 const HAS_GLIMMER_TRACKING = tagValue && tagValidate && track && tagForProperty;
@@ -506,6 +497,8 @@ export default class extends DebugPort {
 
     if (prop === null || prop === undefined) {
       value = this.sentObjects[objectId];
+    } else if (prop === OWNER_SYMBOL) {
+      value = getOwner(this.sentObjects[objectId]);
     } else {
       value = calculateCP(object, { name: prop }, {});
     }
@@ -630,6 +623,7 @@ export default class extends DebugPort {
    * - Bar
    * - Foo
    * - EmberObject
+   * - Owner (Container)
    * ```
    *
    * The "mixins" returned by this function directly represent these things too.
@@ -748,6 +742,27 @@ export default class extends DebugPort {
       expensiveProperties,
       tracked,
     );
+
+    const owner = getOwner(object);
+    const ownerId = guidFor(owner);
+
+    if (owner && !mixinDetails.find((mixin) => mixin.id === ownerId)) {
+      mixinDetails.push({
+        name: 'Container',
+        id: ownerId,
+        expand: false,
+        properties: [
+          {
+            name: OWNER_SYMBOL,
+            value: {
+              inspect: `<Owner:${ownerId}>`,
+              type: 'type-owner',
+              objectId: ownerId,
+            },
+          },
+        ],
+      });
+    }
 
     this.currentObject = { object, mixinDetails, objectId };
 
@@ -914,18 +929,7 @@ function addProperties(properties, hash) {
     let options = { isMandatorySetter: isMandatorySetter(desc) };
 
     if (typeof hash[prop] === 'object' && hash[prop] !== null) {
-      options.isService =
-        !('type' in hash[prop]) && hash[prop].type === 'service';
-
-      if (!options.isService) {
-        if (hash[prop].constructor) {
-          options.isService = hash[prop].constructor.isServiceFactory;
-        }
-      }
-
-      if (!options.isService) {
-        options.isService = desc.value instanceof Service;
-      }
+      options.isService = desc.value instanceof Service;
     }
     if (options.isService) {
       replaceProperty(properties, prop, inspectValue(hash, prop), options);
@@ -1127,6 +1131,9 @@ function calculateCPs(
               item.code = '';
             }
           }
+          if (value instanceof Service) {
+            item.isService = true;
+          }
         }
       }
     });
@@ -1285,7 +1292,7 @@ function getDebugInfo(object) {
       'element',
       'targetObject',
     );
-  } else if (GlimmerComponent && object instanceof GlimmerComponent) {
+  } else if (GlimmerDebugComponent && object instanceof GlimmerDebugComponent) {
     // These properties don't really exist on Glimmer Components, but
     // reading their values trigger a development mode assertion. The
     // more correct long term fix is to make getters lazy (shows "..."
@@ -1307,6 +1314,7 @@ function calculateCP(object, item, errorsForObject) {
     if (object instanceof ArrayProxy && property == parseInt(property)) {
       return object.at(property);
     }
+
     return item.isGetter || property.includes?.('.')
       ? object[property]
       : object.get?.(property) || object[property]; // need to use `get` to be able to detect tracked props

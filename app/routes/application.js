@@ -9,9 +9,11 @@ export default class ApplicationRoute extends Route {
   @service adapter;
   @service port;
   @service router;
+  @service layout;
 
   setupController(controller) {
     controller.set('mixinStack', []);
+
     let port = this.port;
     port.on('objectInspector:updateObject', this, this.updateObject);
     port.on('objectInspector:updateProperty', this, this.updateProperty);
@@ -63,7 +65,7 @@ export default class ApplicationRoute extends Route {
       controller.activateMixinDetails(name, objectId, details, errors);
     }
 
-    this.controller.showInspector();
+    this.layout.showInspector();
   }
 
   setDeprecationCount(message) {

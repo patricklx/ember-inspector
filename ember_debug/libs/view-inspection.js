@@ -1,6 +1,6 @@
-import classify from 'ember-debug/utils/classify';
-import bound from 'ember-debug/utils/bound-method';
-import getObjectName from '../utils/get-object-name';
+import classify from '../utils/classify';
+import bound from '../utils/bound-method';
+import getObjectName from '../utils/get-object-name.js';
 
 function makeHighlight(id) {
   return `<div id="ember-inspector-highlight-${id}" role="presentation"></div>`;
@@ -317,7 +317,11 @@ export default class ViewInspection {
   onMouseMove(event) {
     event.preventDefault();
     event.stopPropagation();
-    this.inspectNearest(event.target, false);
+    let target = event.target;
+    if (target.shadowRoot) {
+      target = target.shadowRoot.elementFromPoint(event.x, event.y) || target;
+    }
+    this.inspectNearest(target, false);
   }
 
   onKeyDown(event) {
@@ -342,7 +346,11 @@ export default class ViewInspection {
     } else if (this.isInspecting && event.button === 0) {
       event.preventDefault();
       event.stopPropagation();
-      this.inspectNearest(event.target, true);
+      let target = event.target;
+      if (target.shadowRoot) {
+        target = target.shadowRoot.elementFromPoint(event.x, event.y) || target;
+      }
+      this.inspectNearest(target, true);
       this.stop(false);
     }
   }
